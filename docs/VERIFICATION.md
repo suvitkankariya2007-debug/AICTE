@@ -161,3 +161,11 @@ Validation note: dependencies were installed from the existing `backend/requirem
 - Unknown or future roles receive a safe generic dashboard fallback.
 - Existing authorization and case-scope rules remain unchanged.
 - Backend regression suite: **27 passed**; frontend tests: **4 passed**; TypeScript/Vite build passed.
+
+## Architecture persona foundation
+
+- Added demo identities for Stage Coordinator, Stage Member, and National Verification Officer.
+- Stage members can read only cases with an active participant assignment.
+- Stage coordinators can read cases in their region; national verification officers can read the national queue.
+- These personas are intentionally read-only until their full workflow actions are implemented.
+- Backend regression suite: **28 passed**; frontend tests: **4 passed**; TypeScript/Vite build passed.

@@ -131,16 +131,19 @@ def create_app(url=None):
         rule_set=db.get(RuleSet,version)
         if not rule_set: raise HTTPException(503,'Application rule version is unavailable')
         return rule_set.definitions
-    def permitted(c,u):
+    def permitted(c,u,db):
         return (
             has_membership(u,'national_admin')
+            or has_membership(u,'national_verification_officer')
+            or has_membership(u,'stage_coordinator',region=c.region)
+            or (has_membership(u,'stage_member',region=c.region) and db.scalar(select(EvcParticipant).where(EvcParticipant.case_id==c.id,EvcParticipant.member_id==u.id,EvcParticipant.active==True)) is not None)
             or has_membership(u,'institution',institution=c.institution)
             or has_membership(u,'regional_officer',region=c.region)
             or (has_membership(u,'scrutiny_officer',region=c.region) and c.owner==u.id)
         )
     def case_for(cid,u,db):
         c=db.get(Case,cid)
-        if not c or not permitted(c,u): raise HTTPException(404,'Application not found in your scope')
+        if not c or not permitted(c,u,db): raise HTTPException(404,'Application not found in your scope')
         return c
     def reviewer(c,u):
         if not (has_membership(u,'scrutiny_officer',region=c.region) or has_membership(u,'regional_officer',region=c.region)): raise HTTPException(403,'Reviewer permission required')
@@ -213,7 +216,7 @@ def create_app(url=None):
         return {'version':rule_set.version,'status':rule_set.status}
     @app.get('/api/applications')
     def cases(u=Depends(current),db=Depends(db_session)):
-        return [serial(c) for c in db.scalars(select(Case).order_by(Case.entered.desc())) if permitted(c,u)]
+        return [serial(c) for c in db.scalars(select(Case).order_by(Case.entered.desc())) if permitted(c,u,db)]
     @app.post('/api/applications')
     def create(body:Create,u=Depends(current),db=Depends(db_session)):
         scope=membership(u,'institution')
@@ -459,7 +462,7 @@ def create_app(url=None):
         db.flush();return serial(doc)
     @app.get('/api/obligations')
     def obligations(u=Depends(current),db=Depends(db_session)):
-        ids=[c.id for c in db.scalars(select(Case)) if permitted(c,u)]
+        ids=[c.id for c in db.scalars(select(Case)) if permitted(c,u,db)]
         return [{**serial(o),'files':[serial(d) for d in db.scalars(select(Document).where(Document.case_id==o.case_id,Document.slot==f'obligation:{o.id}').order_by(Document.id))]} for o in db.scalars(select(Obligation).where(Obligation.case_id.in_(ids)))]
     @app.post('/api/obligations/{oid}/evidence')
     def evidence(oid:int,body:Evidence,u=Depends(current),db=Depends(db_session)):
@@ -502,7 +505,7 @@ def create_app(url=None):
         return serial(o)
     @app.get('/api/notifications')
     def notifications(u=Depends(current),db=Depends(db_session)):
-        ids=[c.id for c in db.scalars(select(Case)) if permitted(c,u)]
+        ids=[c.id for c in db.scalars(select(Case)) if permitted(c,u,db)]
         notices=db.scalars(select(Notice).where(Notice.case_id.in_(ids)).order_by(Notice.id.desc()))
         return [serial(n) for n in notices if not has_membership(u,'institution') or n.recipient=='institution']
     @app.post('/api/notifications/{nid}/retry')
@@ -531,6 +534,12 @@ def seed(db):
     if not db.get(RuleSet,VERSION):
         db.add(RuleSet(version=VERSION,status='published',source=SOURCE,effective_from='2026-01-01T00:00:00+00:00',definitions=RULES))
     if db.get(User,'college-west'):
+        for id,name,role,region in [
+            ('stage-coordinator-west','Stage Coordinator West','stage_coordinator','West Demo'),
+            ('national-verification','National Verification Officer','national_verification_officer',''),
+        ]:
+            if not db.get(User,id):
+                db.add(User(id=id,name=name,role=role,region=region,institution='',password=hash_password(DEMO_PASSWORD)))
         if not db.get(User,'officer-west-2'):
             db.add(User(id='officer-west-2',name='Dr. Kavya Rao',role='scrutiny_officer',region='West Demo',institution='',password=hash_password(DEMO_PASSWORD)))
         users=list(db.scalars(select(User)))
@@ -546,8 +555,10 @@ def seed(db):
         ('officer-west-2','Dr. Kavya Rao','scrutiny_officer','West Demo',''),
         ('officer-east','Dr. Arun Sen','scrutiny_officer','East Demo',''),
         ('regional-west','Priya Shah','regional_officer','West Demo',''),
+        ('stage-coordinator-west','Stage Coordinator West','stage_coordinator','West Demo',''),
         ('evc-west-1','EVC Member One','stage_member','West Demo',''),
         ('evc-west-2','EVC Member Two','stage_member','West Demo',''),
+        ('national-verification','National Verification Officer','national_verification_officer','',''),
         ('admin','National oversight','national_admin','','')]:
         db.add(User(id=id,name=name,role=role,region=region,institution=inst,password=hash_password(DEMO_PASSWORD)))
         db.add(RoleMembership(user_id=id,role=role,region=region,institution=inst))

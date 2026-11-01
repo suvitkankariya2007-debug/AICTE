@@ -167,3 +167,5 @@ Module 13 adds a Playwright browser smoke-test harness with mocked APIs and keyb
 The catalogue upgrade now exposes twenty populated application categories from the supplied workbook across four illustrative tracks. The frontend groups category selection by track, while legacy `new_course` and EoA slots remain compatible with existing seeded cases and tests.
 
 The dashboard upgrade now gives institution, scrutiny officer, regional officer, and national oversight users distinct headings, guidance, primary actions, and metric labels. Unknown roles fall back safely; authorization remains server-enforced and unchanged.
+
+Architecture persona foundation adds stage coordinator, stage member, and national verification demo identities. Stage-member access is limited to active EVC participant assignments; coordinator and national verification access is read-only pending dedicated workflow actions.

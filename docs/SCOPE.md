@@ -5,13 +5,13 @@ Latest user instruction: reuse properly where possible; defer substantial additi
 | Prompt | Current release | Explicitly deferred |
 |---|---|---|
 | 0–1 Shared architecture/design | FastAPI + SQLAlchemy + React/Vite/TS; shared database, navy/white workspaces | Tailwind conversion, React Router URLs, complete feature folder refactor |
-| 2 Identity/access | Institution, assigned scrutiny reviewer, regional actor, oversight; server isolation | Seven official staff roles, verified multi-role memberships, official jurisdiction registry, production identity |
+| 2 Identity/access | Institution, assigned scrutiny reviewer, regional actor, oversight, stage coordinator/member, national verification officer; server isolation | Official jurisdiction registry, production identity |
 | 3 Canonical events | Shared case IDs, transactional audit writes, optimistic revisions, creation-key dedup | Full domain event bus, notification outbox/retry providers, full normalized 30-entity schema |
 | 4 APH registry | Twenty illustrative versioned checklist/route configurations across four tracks, marked unverified | Clause import, rule approval UI, corrigenda, year matrix |
 | 5 Submission | Track-grouped category selection, specific slots, draft, upload/download, completeness, resubmission | Full conditional questionnaire, bundling, official APH validation |
 | 6 Pre-scrutiny | Required presence, PDF signature/text MIME/size checks, hashes | Malware scan, OCR, identity/ratio/area/regulatory numerical checks, AI draft |
 | 7 Assignment/tasks | Regional reviewer assignment with workload counts, reason, revision check and scoped access | Automatic workload recommendation, expertise/conflicts, independent work-task lifecycle |
-| 8 Dashboards | Four functional role scopes, list/detail/filter/metrics | Remaining personas, complaints/referrals, pagination, analytics charts |
+| 8 Dashboards | Eight architecture personas represented with role-specific dashboard copy; scoped application access for stage members, stage coordinators, and national verification | Complaints/referrals, pagination, analytics charts, full stage-member action workflow |
 | 9 Clarification | Reasoned correction loop, versioned files, audit | Per-finding approval/closure and multiple simultaneous clarification records |
 | 10 EVC/committees | Conditional EVC schedule/report gate | Expert appointment, availability/conflict/quorum, SHC/SAC/hearings |
 | 11 National verification | Deferred entirely | No invented mandatory national stage |

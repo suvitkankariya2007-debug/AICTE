@@ -41,6 +41,16 @@ def test_auth_and_scope(client):
     assert c.post('/api/logout').status_code==200
     assert c.get('/api/me').status_code==401
 
+def test_architecture_personas_have_conservative_read_scopes(client):
+    login(client,'stage-coordinator-west')
+    assert client.get('/api/applications').status_code==200
+    assert client.post('/api/applications/APP-DEMO-0402/transition',json={'target':'decision','version':1,'reason':'not permitted'}).status_code==403
+    login(client,'evc-west-1')
+    assert [c['id'] for c in client.get('/api/applications').json()]==['APP-DEMO-0402']
+    login(client,'national-verification')
+    assert len(client.get('/api/applications').json())>=3
+    assert client.post('/api/applications/APP-DEMO-0402/transition',json={'target':'decision','version':1,'reason':'not permitted'}).status_code==403
+
 def test_cookie_security_uses_validated_settings(tmp_path,monkeypatch):
     monkeypatch.setenv('COOKIE_SECURE','true')
     app=create_app('sqlite:///'+str(tmp_path/'secure.db'))
