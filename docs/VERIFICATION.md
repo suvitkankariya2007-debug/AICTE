@@ -169,3 +169,10 @@ Validation note: dependencies were installed from the existing `backend/requirem
 - Stage coordinators can read cases in their region; national verification officers can read the national queue.
 - These personas are intentionally read-only until their full workflow actions are implemented.
 - Backend regression suite: **28 passed**; frontend tests: **4 passed**; TypeScript/Vite build passed.
+
+## Stage and national verification workflow foundation
+
+- Added conservative read-scope tests for Stage Coordinator, Stage Member, and National Verification Officer.
+- Stage members can access only cases with an active participant assignment.
+- Coordinator and national verification personas cannot transition applications through decision endpoints.
+- Added role-specific dashboard copy and metrics for all three personas.
