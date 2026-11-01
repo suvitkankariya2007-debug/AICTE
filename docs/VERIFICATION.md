@@ -182,6 +182,12 @@ Validation note: dependencies were installed from the existing `backend/requirem
 - Supplying `page` and `page_size` returns bounded items with `total`, `pages`, and page metadata.
 - Backend regression suite: **32 passed**; frontend tests: **4 passed**; TypeScript/Vite build passed.
 - Frontend queues now consume paginated application and complaint responses; frontend tests: **4 passed**; TypeScript/Vite build passed.
+
+## Browser runtime verification
+
+- Installed the pinned Playwright Chromium runtime.
+- Updated the browser smoke test for the unified position-based login portal and paginated API responses.
+- Playwright browser smoke/accessibility test: **1 passed**.
 - Backend regression suite: **27 passed**; frontend tests: **4 passed**; TypeScript/Vite build passed.
 
 ## Role-specific dashboard upgrade

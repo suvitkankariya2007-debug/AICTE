@@ -181,3 +181,5 @@ Complaints module adds application-linked institution submissions with category/
 Status ledger is maintained in `docs/STATUS.md`. Queue APIs preserve their original list response when pagination parameters are omitted; `page` and `page_size` opt into metadata-bearing paginated responses for applications and complaints.
 
 The frontend now requests paginated application and complaint queues and renders accessible previous/next controls while retaining compatibility with legacy list-shaped API responses.
+
+Playwright Chromium is installed in the local environment and the browser smoke/accessibility test passes against the current unified login portal and navigation.

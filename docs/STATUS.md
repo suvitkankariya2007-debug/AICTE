@@ -17,13 +17,13 @@ Updated: 1 November 2026
 - Optional paginated application and complaint queue APIs.
 - Frontend application and complaint queues consume pagination metadata with accessible previous/next controls.
 - Backend, frontend, build, and migration validation in the local environment.
+- Playwright Chromium installed and browser smoke/accessibility navigation test passes.
 
 ## Remaining
 
 ### Runtime and production verification
 
 - Execute Docker/PostgreSQL deployment and verify the migration-first topology.
-- Install Chromium and execute the Playwright browser suite.
 - Replace demo credentials with production identity and jurisdiction services.
 
 ### Regulatory and document integrations
