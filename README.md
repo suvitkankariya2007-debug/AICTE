@@ -10,7 +10,7 @@ Working on `test` only. Synthetic institutions, staff, routes and deadlines. Thi
 - Correction → institutional resubmission → scrutiny. Findings/reasons are required for reviewer actions.
 - EVC schedule and report record, blocking advancement until both exist. Full expert appointment is deferred.
 - Human demo approval/rejection, protected against stage jumps and stale revisions.
-- Undertaking and document registers: evidence **references**, submission, authorised verification, actual renewal expiry date.
+- Undertaking and document registers: versioned evidence **files and descriptions**, submission, authorised verification, actual renewal expiry date.
 - Deadline worker, upcoming/overdue/escalated levels, persistent duplicate prevention and simulated delivery records.
 - Navy/white interface, live API-derived counts, scoped queues, search, filters, route tracker and audit history. Polls shared records every ten seconds.
 
@@ -53,6 +53,7 @@ All accounts use password `DemoPass!2026`; account cards appear on the demo logi
 | college-west | Pune Demo Institute |
 | college-east | Eastern Demo Institute; isolation check |
 | officer-west | Assigned West Demo applications |
+| officer-west-2 | Dr. Kavya Rao; initially unassigned West reviewer |
 | officer-east | Assigned East Demo applications |
 | regional-west | West Demo coordination and demo decisions |
 | admin | National oversight and deadline checks; cannot decide cases |
@@ -66,7 +67,7 @@ Keep this release local. Demo mode is required; real provisioning, production lo
 3. College West uploads replacement evidence; old versions stay visible. Resubmit.
 4. Officer West records findings and completes scrutiny. Regional West records a demo decision.
 5. For the EVC route use New course, or seeded `APP-DEMO-0402`: complete scrutiny, then Regional West records visit date/report before advancing to decision.
-6. Compliance & validity: College West submits an evidence reference and, for renewal, an expiry date. Regional West verifies it. Submission alone does not close it.
+6. Compliance & validity: College West uploads a supporting file, submits an evidence description and, for renewal, a future expiry date. Regional West verifies it. Submission alone does not close it.
 7. Admin runs deadline checks twice: first creates notices, second creates zero duplicates. A worker also runs the same checks when started separately.
 8. Compare East and West account views; inspect the application audit trail.
 
@@ -83,3 +84,13 @@ Backend tests exercise real HTTP handlers and a temporary SQL database, includin
 ## Reuse and remaining scope
 
 See `docs/REUSE.md` for licensed foundations and external repository research. No unlicensed competitor source is copied into this release. See `docs/SCOPE.md` for precise prompt coverage and deferred features. This release is a complete small workflow slice, not completion of the entire 15-prompt specification.
+
+## Preview and acceptance
+
+Use the same URL after every update: https://aicte-workspace-preview-suvit.glassycalf256.chatgpt.site/
+
+Preview 2 is an interactive **browser-local rehearsal**, not a deployed Python backend. Records and synthetic file contents stay in IndexedDB in the current browser; role checks are simulated. Switching demo accounts rehearses the handoff. Reset demo restores the samples. No Railway deployment is used. Do not use the Site to claim server security, shared cross-device data or running background tasks.
+
+Test instructions and expected results are in [TEST_CHECKLIST.md](TEST_CHECKLIST.md). Start with reviewer assignment (stage 7) and evidence uploads (stage 5). Leave manual boxes unchecked until you have tested and confirmed them.
+
+Build the separate rehearsal bundle: `npm run build --prefix frontend` then `node frontend/preview/build.mjs`. The normal production build does not include the preview adapter.

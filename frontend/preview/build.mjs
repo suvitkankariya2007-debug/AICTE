@@ -1,0 +1,11 @@
+import fs from 'node:fs/promises';
+import path from 'node:path';
+import {fileURLToPath} from 'node:url';
+const frontend=path.resolve(path.dirname(fileURLToPath(import.meta.url)),'..'),dist=path.join(frontend,'dist');
+const html=await fs.readFile(path.join(dist,'index.html'),'utf8');
+const match=html.match(/<script type="module"[^>]*src="([^"]+)"[^>]*><\/script>/);
+if(!match)throw Error('Run npm run build first');
+await fs.writeFile(path.join(dist,'index.html'),html.replace(match[0],`<script type="module" data-app="${match[1]}" src="/preview.js"></script>`));
+await Promise.all([['browser.js','preview.js'],['engine.js','engine.js'],['seed.json','preview-seed.json']].map(([a,b])=>fs.copyFile(path.join(frontend,'preview',a),path.join(dist,b))));
+await fs.copyFile(path.join(frontend,'..','TEST_CHECKLIST.md'),path.join(dist,'TEST_CHECKLIST.md'));
+console.log('Browser-local rehearsal packaged.');

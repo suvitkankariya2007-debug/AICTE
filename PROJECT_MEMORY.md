@@ -117,3 +117,17 @@ Verified locally: 10 backend HTTP/database scenarios, 4 frontend jsdom interacti
 Deferred: APH registry approval/import, numeric regulation/OCR engine, remaining official role workspaces, workload assignment, expert appointment/quorum, SHC/SAC/hearings, national referrals, grievances, full compliance evidence files, live SMS/payment/NBA, AI drafts and certificate PDFs. No external API keys required for current demo. User explicitly authorised pushing tested work to test; main remains untouched.
 
 Next: use README.md to launch; address docs/SCOPE.md deferred list only when user expands scope; preserve test-only pushes and rerun relevant checks after changes.
+
+## Preview/testing update — 1 November 2026, release 2026-11-01-r2
+
+User requests: preserve the SAME ChatGPT Site URL after every update, no Railway deployment for now, keep a separate GitHub acceptance checklist, and explain stage tests before adding features.
+
+Site identity: appgprj_6ae7414286e48191815bc2ac4dfdf833. URL: https://aicte-workspace-preview-suvit.glassycalf256.chatgpt.site/ . Preserve existing audience.
+
+Implemented next features: regional reviewer reassignment with open workload counts, reason/revision/region/closed-case checks and immediate backend scope changes; versioned actual compliance evidence uploads/downloads with hashes, submission prerequisite and explicit human verification. Replacement files clear the old submission description and reopen verification. Per-obligation form state is isolated. In-review metrics/filter now agree.
+
+Preview 2 uses the same React screens plus an explicitly separate IndexedDB rehearsal adapter in frontend/preview. It simulates workflows and account scopes, retains files in this browser, and supports reset. It is NOT a deployed FastAPI backend, shared cross-device database, secure multi-user identity, or running scheduler. Do not certify server permissions from it. The normal frontend build excludes the adapter; preview build script adds it separately.
+
+TEST_CHECKLIST.md contains numbered steps, expected results, actor/case details, architecture mappings, backend-only checks and unfilled user acceptance boxes. Explain changed test IDs before subsequent features; run relevant automated tests, update docs, push only test and republish this same Site. No keys required for this release.
+
+Remaining: full APH validation, workload recommendations/expertise/conflicts, committee/hearing/SAC/SHC engines, OCR, live integration providers and full hosting of the Python backend. No Railway work is authorised for this preview.

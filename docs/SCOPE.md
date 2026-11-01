@@ -10,14 +10,14 @@ Latest user instruction: reuse properly where possible; defer substantial additi
 | 4 APH registry | Three illustrative versioned checklist/route configurations, marked unverified | Clause import, rule approval UI, corrigenda, year matrix |
 | 5 Submission | Specific slots, draft, upload/download, completeness, resubmission | Full conditional questionnaire, bundling, all application categories |
 | 6 Pre-scrutiny | Required presence, PDF signature/text MIME/size checks, hashes | Malware scan, OCR, identity/ratio/area/regulatory numerical checks, AI draft |
-| 7 Assignment/tasks | Seeded reviewer assignment; authoritative scoped query | Workload recommendation, coordinator assignment UI, independent work-task lifecycle |
+| 7 Assignment/tasks | Regional reviewer assignment with workload counts, reason, revision check and scoped access | Automatic workload recommendation, expertise/conflicts, independent work-task lifecycle |
 | 8 Dashboards | Four functional role scopes, list/detail/filter/metrics | Remaining personas, complaints/referrals, pagination, analytics charts |
 | 9 Clarification | Reasoned correction loop, versioned files, audit | Per-finding approval/closure and multiple simultaneous clarification records |
 | 10 EVC/committees | Conditional EVC schedule/report gate | Expert appointment, availability/conflict/quorum, SHC/SAC/hearings |
 | 11 National verification | Deferred entirely | No invented mandatory national stage |
 | 12 Tracker | Route-driven status/colours/history, responsive scroll | Stage popovers, business calendar |
 | 13 Complaints | Deferred entirely | Separate grievance engine |
-| 14 Automations | Undertaking/document evidence reference submission and verification; expiry; deadline worker; simulated notices | Actual compliance-file uploads, real SMS/payment/NBA, PDF certificates, AI report, validated regulations |
+| 14 Automations | Versioned undertaking/document evidence-file uploads and description submission and verification; expiry; deadline worker; simulated notices | Real SMS/payment/NBA, PDF certificates, AI report, validated regulations |
 | 15 QA | HTTP/database tests, typecheck/build, frontend DOM interaction checks | Full real-browser E2E and visual QA, PostgreSQL/Docker execution, full security/accessibility audit |
 
 ## Key invariants
@@ -35,3 +35,5 @@ Latest user instruction: reuse properly where possible; defer substantial additi
 ## Known demo limitations
 
 File screening is preliminary; there is no malware scanner or sophisticated PDF content validation. Uploads use base64 database storage with a 2 MB limit, not production object storage. Audit records have no mutation API but are not cryptographically tamper-proof against database administrators. Login cards and shared public demo credentials deliberately make this unsuitable for public production use. No provider failure/retry behaviour is claimed because all deliveries are local simulations. Worker is a separate process; start it explicitly. Schema bootstrap uses create_all for easy demo runs; Alembic initial migration is provided and tested.
+
+Preview 2 uses the same React screens with a separate browser-local rehearsal adapter. The FastAPI backend remains the authoritative implementation. No Railway deployment. See TEST_CHECKLIST.md for test boundaries.

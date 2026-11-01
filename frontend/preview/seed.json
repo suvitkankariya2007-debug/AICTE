@@ -1,0 +1,238 @@
+{
+  "accounts": [
+    {
+      "id": "college-west",
+      "name": "Ananya Deshmukh",
+      "role": "institution",
+      "region": "West Demo",
+      "institution": "Pune Demo Institute"
+    },
+    {
+      "id": "college-east",
+      "name": "Ravi Sen",
+      "role": "institution",
+      "region": "East Demo",
+      "institution": "Eastern Demo Institute"
+    },
+    {
+      "id": "officer-west",
+      "name": "Dr. Meera Joshi",
+      "role": "scrutiny_officer",
+      "region": "West Demo",
+      "institution": ""
+    },
+    {
+      "id": "officer-west-2",
+      "name": "Dr. Kavya Rao",
+      "role": "scrutiny_officer",
+      "region": "West Demo",
+      "institution": ""
+    },
+    {
+      "id": "officer-east",
+      "name": "Dr. Arun Sen",
+      "role": "scrutiny_officer",
+      "region": "East Demo",
+      "institution": ""
+    },
+    {
+      "id": "regional-west",
+      "name": "Priya Shah",
+      "role": "regional_officer",
+      "region": "West Demo",
+      "institution": ""
+    },
+    {
+      "id": "admin",
+      "name": "National oversight",
+      "role": "national_admin",
+      "region": "",
+      "institution": ""
+    }
+  ],
+  "rules": {
+    "version": "DEMO-2026-v1",
+    "source": "Illustrative prototype rules \u00b7 NEEDS_APH_VERIFICATION",
+    "types": {
+      "new_institution": {
+        "label": "New institution",
+        "route": [
+          "scrutiny",
+          "evc",
+          "decision"
+        ],
+        "slots": [
+          "Institution declaration",
+          "Land evidence",
+          "Building evidence"
+        ],
+        "days": 7
+      },
+      "new_course": {
+        "label": "New course / intake increase",
+        "route": [
+          "scrutiny",
+          "evc",
+          "decision"
+        ],
+        "slots": [
+          "Institution declaration",
+          "Programme proposal",
+          "Faculty statement"
+        ],
+        "days": 7
+      },
+      "eoa": {
+        "label": "Extension of approval",
+        "route": [
+          "scrutiny",
+          "decision"
+        ],
+        "slots": [
+          "Institution declaration",
+          "Prior approval",
+          "Compliance declaration"
+        ],
+        "days": 7
+      }
+    }
+  },
+  "cases": [
+    {
+      "id": "APP-EAST-0100",
+      "institution": "Eastern Demo Institute",
+      "region": "East Demo",
+      "kind": "eoa",
+      "state": "scrutiny",
+      "route": [
+        "scrutiny",
+        "decision"
+      ],
+      "rule_version": "DEMO-2026-v1",
+      "owner": "officer-east",
+      "version": 1,
+      "entered": "2026-11-01T13:59:27.709014+00:00",
+      "due": "2026-11-03T13:59:27.703590+00:00",
+      "reason": "",
+      "schedule": "",
+      "report": "",
+      "submit_key": "seed:east"
+    },
+    {
+      "id": "APP-DEMO-0402",
+      "institution": "Pune Demo Institute",
+      "region": "West Demo",
+      "kind": "new_course",
+      "state": "scrutiny",
+      "route": [
+        "scrutiny",
+        "evc",
+        "decision"
+      ],
+      "rule_version": "DEMO-2026-v1",
+      "owner": "officer-west",
+      "version": 1,
+      "entered": "2026-10-24T13:59:27.703590+00:00",
+      "due": "2026-11-03T13:59:27.703590+00:00",
+      "reason": "",
+      "schedule": "",
+      "report": "",
+      "submit_key": "seed:APP-DEMO-0402"
+    },
+    {
+      "id": "APP-DEMO-0398",
+      "institution": "Pune Demo Institute",
+      "region": "West Demo",
+      "kind": "eoa",
+      "state": "decision",
+      "route": [
+        "scrutiny",
+        "decision"
+      ],
+      "rule_version": "DEMO-2026-v1",
+      "owner": "officer-west",
+      "version": 1,
+      "entered": "2026-10-24T13:59:27.703590+00:00",
+      "due": "2026-10-23T13:59:27.703590+00:00",
+      "reason": "",
+      "schedule": "",
+      "report": "",
+      "submit_key": "seed:APP-DEMO-0398"
+    },
+    {
+      "id": "APP-DEMO-0310",
+      "institution": "Pune Demo Institute",
+      "region": "West Demo",
+      "kind": "eoa",
+      "state": "approved",
+      "route": [
+        "scrutiny",
+        "decision"
+      ],
+      "rule_version": "DEMO-2026-v1",
+      "owner": "officer-west",
+      "version": 1,
+      "entered": "2026-10-24T13:59:27.703590+00:00",
+      "due": "2026-11-08T13:59:27.703590+00:00",
+      "reason": "",
+      "schedule": "",
+      "report": "",
+      "submit_key": "seed:APP-DEMO-0310"
+    }
+  ],
+  "obligations": [
+    {
+      "id": 1,
+      "case_id": "APP-DEMO-0310",
+      "kind": "undertaking",
+      "title": "Submit annual compliance declaration",
+      "due": "2026-10-22T13:59:27.703590+00:00",
+      "status": "pending",
+      "evidence": "",
+      "proposed_expiry": "",
+      "version": 1,
+      "files": []
+    },
+    {
+      "id": 2,
+      "case_id": "APP-DEMO-0310",
+      "kind": "document",
+      "title": "Lease evidence renewal",
+      "due": "2026-11-03T13:59:27.703590+00:00",
+      "status": "pending",
+      "evidence": "",
+      "proposed_expiry": "",
+      "version": 1,
+      "files": []
+    }
+  ],
+  "documents": [],
+  "audit": [
+    {
+      "id": 1,
+      "case_id": "APP-DEMO-0402",
+      "actor": "system",
+      "action": "synthetic_seed",
+      "detail": "Fictional demonstration record; unverified APH mapping",
+      "created": "2026-11-01T13:59:27.707313+00:00"
+    },
+    {
+      "id": 2,
+      "case_id": "APP-DEMO-0398",
+      "actor": "system",
+      "action": "synthetic_seed",
+      "detail": "Fictional demonstration record; unverified APH mapping",
+      "created": "2026-11-01T13:59:27.707912+00:00"
+    },
+    {
+      "id": 3,
+      "case_id": "APP-DEMO-0310",
+      "actor": "system",
+      "action": "synthetic_seed",
+      "detail": "Fictional demonstration record; unverified APH mapping",
+      "created": "2026-11-01T13:59:27.708520+00:00"
+    }
+  ],
+  "notices": [],
+  "nextDocument": 1
+}

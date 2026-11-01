@@ -78,6 +78,8 @@ def test_obligation_verification_and_expiry(client):
     c=client;login(c,'regional-west');obs=c.get('/api/obligations').json();doc=next(o for o in obs if o['kind']=='document')
     assert c.post(f"/api/obligations/{doc['id']}/verify",json={'version':doc['version']}).status_code==409
     login(c,'college-west');future=(datetime.now(timezone.utc)+timedelta(days=730)).isoformat()
+    r=c.post(f"/api/obligations/{doc['id']}/files",data={'version':doc['version']},files={'file':('renewal.txt',b'Renewed lease evidence','text/plain')});assert r.status_code==200
+    doc=next(o for o in c.get('/api/obligations').json() if o['id']==doc['id'])
     data={'version':doc['version'],'evidence':'Lease renewal reference DEMO-2026','expiry':future}
     assert c.post(f"/api/obligations/{doc['id']}/evidence",json=data).status_code==200
     changed=next(o for o in c.get('/api/obligations').json() if o['id']==doc['id'])
@@ -125,3 +127,55 @@ def test_concurrent_transition_only_one_wins(client):
     after=detail(client,before['id']);assert after['version']==before['version']+1
     assert sum(x['action']=='stage_changed' for x in after['audit'])==1
     assert 'scrutiny → correction' in after['audit'][0]['detail']
+
+def test_assignment_changes_access_and_preserves_region(client):
+    c=client;login(c,'regional-west');case=detail(c,'APP-DEMO-0402')
+    choices=c.get('/api/reviewers',params={'case_id':case['id']}).json()
+    assert {u['id'] for u in choices}=={'officer-west','officer-west-2'}
+    base={'version':case['version'],'reviewer_id':'officer-east','reason':'Workload balancing'}
+    assert c.post('/api/applications/'+case['id']+'/assign',json=base).status_code==422
+    base['reviewer_id']='officer-west-2'
+    assert c.post('/api/applications/'+case['id']+'/assign',json=base).status_code==200
+    assert c.post('/api/applications/'+case['id']+'/assign',json=base).status_code==409
+    assert detail(c,case['id'])['region']==case['region']
+    login(c,'officer-west');assert c.get('/api/applications/'+case['id']).status_code==404
+    login(c,'officer-west-2');assert detail(c,case['id'])['owner']=='officer-west-2'
+    assert c.post('/api/applications/'+case['id']+'/assign',json=base).status_code==403
+    assert any(a['action']=='reviewer_assigned' for a in detail(c,case['id'])['audit'])
+
+def test_compliance_files_versions_and_isolation(client):
+    c=client;login(c,'college-west');o=c.get('/api/obligations').json()[0]
+    payload={'version':o['version'],'evidence':'Evidence description'}
+    assert c.post(f"/api/obligations/{o['id']}/evidence",json=payload).status_code==422
+    for n in range(2):
+        o=next(x for x in c.get('/api/obligations').json() if x['id']==o['id'])
+        assert c.post(f"/api/obligations/{o['id']}/files",data={'version':o['version']},files={'file':('proof.txt',f'proof revision {n}'.encode(),'text/plain')}).status_code==200
+    o=next(x for x in c.get('/api/obligations').json() if x['id']==o['id'])
+    assert len(o['files'])==2;assert o['status']=='pending'
+    assert c.post(f"/api/obligations/{o['id']}/evidence",json={'version':o['version'],'evidence':'Uploaded corrected evidence'}).status_code==200
+    login(c,'college-east');assert c.get('/api/documents/'+str(o['files'][0]['id'])).status_code==404
+
+def test_assignment_authority_and_meaningful_reason(client):
+    c=client;login(c,'regional-west');a=detail(c,'APP-DEMO-0402')
+    path='/api/applications/'+a['id']+'/assign'
+    body={'version':a['version'],'reviewer_id':'officer-west-2','reason':'      '}
+    assert c.post(path,json=body).status_code==422
+    body['reason']='Balance workload'
+    login(c,'admin');assert c.post(path,json=body).status_code==403
+    login(c,'college-west');assert c.post(path,json=body).status_code==403
+    login(c,'regional-west');closed=detail(c,'APP-DEMO-0310')
+    assert c.post('/api/applications/'+closed['id']+'/assign',json={**body,'version':closed['version']}).status_code==409
+
+def test_replacement_compliance_file_reopens_verification(client):
+    c=client;login(c,'college-west');o=c.get('/api/obligations').json()[0]
+    def current_obligation():return next(x for x in c.get('/api/obligations').json() if x['id']==o['id'])
+    def file(v):return c.post(f"/api/obligations/{o['id']}/files",data={'version':v},files={'file':('proof.txt',b'New proof','text/plain')})
+    assert file(o['version']).status_code==200
+    o=current_obligation()
+    assert c.post(f"/api/obligations/{o['id']}/evidence",json={'version':o['version'],'evidence':'      '}).status_code==422
+    assert c.post(f"/api/obligations/{o['id']}/evidence",json={'version':o['version'],'evidence':'Original proof description'}).status_code==200
+    login(c,'regional-west');o=current_obligation()
+    assert c.post(f"/api/obligations/{o['id']}/verify",json={'version':o['version']}).status_code==200
+    login(c,'college-west');o=current_obligation();assert file(o['version']).status_code==200
+    changed=current_obligation();assert changed['status']=='pending';assert changed['evidence']=='';assert len(changed['files'])==2
+    login(c,'regional-west');assert c.post(f"/api/obligations/{o['id']}/verify",json={'version':changed['version']}).status_code==409

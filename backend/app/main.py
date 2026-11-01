@@ -22,6 +22,7 @@ class Login(Strict): username:str; password:str
 class Create(Strict): kind:str; idempotency_key:str=Field(min_length=8,max_length=100)
 class Action(Strict): target:str; version:int; reason:str=Field(default='',max_length=4000)
 class Evidence(Strict): version:int; evidence:str=Field(min_length=5,max_length=4000); expiry:str=''
+class Assign(Strict): version:int; reviewer_id:str; reason:str=Field(min_length=5,max_length=2000)
 class Verify(Strict): version:int
 class Schedule(Strict): version:int; date:str; report:str=Field(default='',max_length=4000)
 
@@ -146,7 +147,7 @@ def create_app(url=None):
         c=case_for(cid,u,db); reviewer(c,u)
         if body.target in ['approved','rejected'] and u.role!='regional_officer': raise HTTPException(403,'Demo decision authority required')
         if not body.reason.strip(): raise HTTPException(422,'Record review findings / reasons')
-        if c.state=='evc' and body.target=='decision' and (not c.schedule or not c.report): raise HTTPException(422,'EVC schedule and report required')
+        if c.state=='evc' and body.target=='decision' and (not c.schedule or not c.report.strip()): raise HTTPException(422,'EVC schedule and report required')
         return serial(move(db,c,u,body.target,body.version,body.reason))
     @app.post('/api/applications/{cid}/evc')
     def evc(cid:str,body:Schedule,u=Depends(current),db=Depends(db_session)):
@@ -157,16 +158,55 @@ def create_app(url=None):
         audit(db,c,u,'evc_updated',f'Schedule {date}; report: {body.report}')
         db.add(Notice(case_id=cid,recipient='institution',message=f'EVC schedule updated: {date}',level='info',dedup=f'evc:{cid}:{body.version}'))
         return {'ok':True}
+    @app.get('/api/reviewers')
+    def reviewers(case_id:str,u=Depends(current),db=Depends(db_session)):
+        c=case_for(case_id,u,db)
+        if u.role!='regional_officer': raise HTTPException(403,'Regional coordinator required')
+        users=list(db.scalars(select(User).where(User.role=='scrutiny_officer',User.region==c.region)))
+        return [{**serial(r),'open_cases':len(list(db.scalars(select(Case).where(Case.owner==r.id,Case.state.not_in(['approved','rejected'])))))} for r in users]
+    @app.post('/api/applications/{cid}/assign')
+    def assign(cid:str,body:Assign,u=Depends(current),db=Depends(db_session)):
+        c=case_for(cid,u,db)
+        if u.role!='regional_officer': raise HTTPException(403,'Regional coordinator required')
+        if c.state in ['approved','rejected']: raise HTTPException(409,'Closed application cannot be reassigned')
+        if len(body.reason.strip())<5: raise HTTPException(422,'Provide a meaningful assignment reason')
+        r=db.get(User,body.reviewer_id)
+        if not r or r.role!='scrutiny_officer' or r.region!=c.region: raise HTTPException(422,'Choose an eligible reviewer in the originating region')
+        previous=c.owner
+        if previous==r.id: raise HTTPException(409,'Reviewer is already assigned')
+        if db.execute(update(Case).where(Case.id==cid,Case.version==body.version).values(owner=r.id,version=body.version+1)).rowcount!=1: raise HTTPException(409,'Case changed; refresh')
+        audit(db,c,u,'reviewer_assigned',f'{previous} → {r.id}; reason: {body.reason}')
+        db.add(Notice(case_id=cid,recipient='reviewer',message=f'Reviewer assignment changed to {r.name}',level='info',dedup=f'assignment:{cid}:{body.version}'))
+        return {'ok':True}
+    @app.post('/api/obligations/{oid}/files')
+    async def obligation_file(oid:int,version:int=Form(...),file:UploadFile=File(...),u=Depends(current),db=Depends(db_session)):
+        o=db.get(Obligation,oid)
+        if not o: raise HTTPException(404)
+        c=case_for(o.case_id,u,db)
+        if u.role!='institution': raise HTTPException(403,'Institution permission required')
+        data=await file.read(2*1024*1024+1)
+        if not data or len(data)>2*1024*1024: raise HTTPException(422,'Upload must be between 1 byte and 2 MB')
+        if not ((file.content_type=='application/pdf' and data.startswith(b'%PDF-')) or (file.content_type=='text/plain' and b'\x00' not in data)):
+            raise HTTPException(422,'Demo accepts PDF or plain text evidence only')
+        if db.execute(update(Obligation).where(Obligation.id==oid,Obligation.version==version).values(status='pending',evidence='',proposed_expiry='',version=version+1)).rowcount!=1: raise HTTPException(409,'Obligation changed; refresh')
+        slot=f'obligation:{oid}'
+        prior=list(db.scalars(select(Document).where(Document.case_id==c.id,Document.slot==slot)))
+        doc=Document(case_id=c.id,slot=slot,filename=re.sub(r'[^\w. -]','_',file.filename or 'evidence')[-120:],content=base64.b64encode(data).decode(),sha256=hashlib.sha256(data).hexdigest(),revision=len(prior)+1)
+        db.add(doc)
+        audit(db,c,u,'compliance_file_uploaded',f'{o.title}; revision {doc.revision}; sha256 {doc.sha256}; submission still required')
+        db.flush();return serial(doc)
     @app.get('/api/obligations')
     def obligations(u=Depends(current),db=Depends(db_session)):
         ids=[c.id for c in db.scalars(select(Case)) if permitted(c,u)]
-        return [serial(o) for o in db.scalars(select(Obligation).where(Obligation.case_id.in_(ids)))]
+        return [{**serial(o),'files':[serial(d) for d in db.scalars(select(Document).where(Document.case_id==o.case_id,Document.slot==f'obligation:{o.id}').order_by(Document.id))]} for o in db.scalars(select(Obligation).where(Obligation.case_id.in_(ids)))]
     @app.post('/api/obligations/{oid}/evidence')
     def evidence(oid:int,body:Evidence,u=Depends(current),db=Depends(db_session)):
         o=db.get(Obligation,oid)
         if not o: raise HTTPException(404)
         c=case_for(o.case_id,u,db)
         if u.role!='institution': raise HTTPException(403,'Institution permission required')
+        if len(body.evidence.strip())<5: raise HTTPException(422,'Provide a meaningful evidence description')
+        if not db.scalar(select(Document).where(Document.case_id==c.id,Document.slot==f'obligation:{oid}')): raise HTTPException(422,'Upload the supporting evidence file before submitting')
         expiry=utc(body.expiry).isoformat() if o.kind=='document' else ''
         if expiry and utc(expiry)<=datetime.now(timezone.utc): raise HTTPException(422,'Renewal expiry must be in the future')
         if db.execute(update(Obligation).where(Obligation.id==oid,Obligation.version==body.version).values(evidence=body.evidence,proposed_expiry=expiry,status='submitted',version=body.version+1)).rowcount!=1: raise HTTPException(409,'Obligation changed')
@@ -196,12 +236,16 @@ def create_app(url=None):
     return app
 
 def seed(db):
-    if db.get(User,'college-west'): return
+    if db.get(User,'college-west'):
+        if not db.get(User,'officer-west-2'):
+            db.add(User(id='officer-west-2',name='Dr. Kavya Rao',role='scrutiny_officer',region='West Demo',institution='',password=hash_password(DEMO_PASSWORD)))
+        return
     if os.getenv('DEMO_MODE','true')!='true': raise RuntimeError('This release supports DEMO_MODE=true only')
     for id,name,role,region,inst in [
         ('college-west','Ananya Deshmukh','institution','West Demo','Pune Demo Institute'),
         ('college-east','Ravi Sen','institution','East Demo','Eastern Demo Institute'),
         ('officer-west','Dr. Meera Joshi','scrutiny_officer','West Demo',''),
+        ('officer-west-2','Dr. Kavya Rao','scrutiny_officer','West Demo',''),
         ('officer-east','Dr. Arun Sen','scrutiny_officer','East Demo',''),
         ('regional-west','Priya Shah','regional_officer','West Demo',''),
         ('admin','National oversight','national_admin','','')]:
