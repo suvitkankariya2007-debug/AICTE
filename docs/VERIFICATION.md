@@ -167,6 +167,13 @@ Validation note: dependencies were installed from the existing `backend/requirem
 - National Verification Officers can record verified, clarification, or not-verified results in a separate versioned record.
 - Results are audit logged and visible on the application detail response without changing the regional route state.
 - Completed verification records cannot be overwritten.
+
+## Complaints and referrals
+
+- Added migration `0016_complaints`.
+- Institutions can submit categorized, prioritized complaints against applications they own.
+- Regional officers see complaints in their region; national oversight sees the complete register.
+- Authorized coordinators can triage complaints through review, referral, resolution, and closure with versioned audit history.
 - Backend regression suite: **27 passed**; frontend tests: **4 passed**; TypeScript/Vite build passed.
 
 ## Role-specific dashboard upgrade

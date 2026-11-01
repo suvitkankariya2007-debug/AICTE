@@ -175,3 +175,5 @@ The stage and national verification foundation is tested at the API boundary: st
 Stage workflow module adds same-region Stage Coordinator assignment through EVC participants and structured Stage Member findings (category, severity, description, recommendation) with active-assignment authorization. National Verification Officer remains read-only.
 
 National verification module adds a separate versioned record with verified, clarification, and not-verified outcomes. Only the national verification membership can write it; the regional route state remains unchanged and completed verification cannot be overwritten.
+
+Complaints module adds application-linked institution submissions with category/priority, regional and national visibility, and versioned triage through review, referral, resolution, and closure. It remains separate from the application route and does not provide external grievance or appeals integration.

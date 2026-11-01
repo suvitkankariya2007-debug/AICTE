@@ -154,6 +154,25 @@ class NationalVerification(Base):
     reviewed_by: Mapped[str]=mapped_column(default='')
     created: Mapped[str]=mapped_column(default=now)
     reviewed: Mapped[str]=mapped_column(default='')
+class Complaint(Base):
+    __tablename__='complaints'
+    __table_args__=(
+        Index('ix_complaints_case_status', 'case_id', 'status'),
+        Index('ix_complaints_region_status', 'region', 'status'),
+    )
+    id: Mapped[int]=mapped_column(primary_key=True)
+    case_id: Mapped[str]=mapped_column(ForeignKey('applications.id'))
+    institution: Mapped[str]
+    region: Mapped[str]
+    category: Mapped[str]
+    priority: Mapped[str]=mapped_column(default='normal')
+    status: Mapped[str]=mapped_column(default='open')
+    description: Mapped[str]=mapped_column(Text)
+    resolution: Mapped[str]=mapped_column(Text,default='')
+    version: Mapped[int]=mapped_column(default=1)
+    created_by: Mapped[str]
+    created: Mapped[str]=mapped_column(default=now)
+    updated: Mapped[str]=mapped_column(default=now)
 class Obligation(Base):
     __tablename__='obligations'
     __table_args__=(

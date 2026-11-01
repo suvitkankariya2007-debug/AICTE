@@ -95,6 +95,30 @@ def test_national_verification_record_is_nationally_scoped(client):
         'decision':'rejected',
         'note':'This completed record must not be changed.',
     }).status_code==409
+
+def test_complaint_submission_visibility_and_referral_triage(client):
+    login(client,'college-west')
+    complaint=client.post('/api/complaints',json={
+        'case_id':'APP-DEMO-0402',
+        'category':'service_delay',
+        'priority':'high',
+        'description':'The institution requests review of a delayed scrutiny response.',
+    })
+    assert complaint.status_code==200
+    record=complaint.json()
+    assert record['status']=='open'
+    assert len(client.get('/api/complaints').json())==1
+    login(client,'college-east')
+    assert client.get('/api/complaints').json()==[]
+    assert client.post('/api/complaints/'+str(record['id'])+'/triage',json={'version':1,'status':'referred','priority':'urgent','resolution':'Referred to the regional coordination queue for review.'}).status_code==404
+    login(client,'regional-west')
+    assert client.get('/api/complaints').json()[0]['id']==record['id']
+    triage=client.post('/api/complaints/'+str(record['id'])+'/triage',json={'version':1,'status':'referred','priority':'urgent','resolution':'Referred to the regional coordination queue for review.'})
+    assert triage.status_code==200
+    assert triage.json()['status']=='referred'
+    login(client,'admin')
+    closed=client.post('/api/complaints/'+str(record['id'])+'/triage',json={'version':triage.json()['version'],'status':'closed','priority':'urgent','resolution':'Referral reviewed and closed with a recorded response.'})
+    assert closed.status_code==200
     login(client,'evc-west-1')
     assert [c['id'] for c in client.get('/api/applications').json()]==['APP-DEMO-0402']
     login(client,'national-verification')

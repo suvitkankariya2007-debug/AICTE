@@ -8,7 +8,7 @@ from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field, ConfigDict
 from sqlalchemy import select, update
 from sqlalchemy.exc import IntegrityError
-from .db import Base, User, RoleMembership, RuleSet, LoginSession, Case, Assignment, EvcParticipant, Document, Finding, NationalVerification, Obligation, Audit, Notice, WorkerHeartbeat, setup
+from .db import Base, User, RoleMembership, RuleSet, LoginSession, Case, Assignment, EvcParticipant, Document, Finding, NationalVerification, Complaint, Obligation, Audit, Notice, WorkerHeartbeat, setup
 from .rules import RULES, VERSION, SOURCE, validate_definitions
 from .engine import move, audit, sweep, utc
 from .config import load_settings
@@ -44,6 +44,16 @@ class NationalVerificationReview(Strict):
     version:int
     decision:str
     note:str=Field(min_length=5,max_length=4000)
+class ComplaintCreate(Strict):
+    case_id:str
+    category:str=Field(min_length=3,max_length=80)
+    priority:str='normal'
+    description:str=Field(min_length=10,max_length=4000)
+class ComplaintTriage(Strict):
+    version:int
+    status:str
+    priority:str='normal'
+    resolution:str=Field(min_length=5,max_length=4000)
 class RuleDraft(Strict):
     version:str=Field(min_length=1,max_length=80)
     source:str=Field(min_length=5,max_length=4000)
@@ -246,6 +256,50 @@ def create_app(url=None):
         if c.kind not in definitions: raise HTTPException(503,'Application checklist is unavailable')
         verification=db.scalar(select(NationalVerification).where(NationalVerification.case_id==cid).order_by(NationalVerification.id.desc()))
         return {**serial(c),'documents':[serial(d) for d in db.scalars(select(Document).where(Document.case_id==cid).order_by(Document.id))],'findings':[serial(f) for f in db.scalars(select(Finding).where(Finding.case_id==cid).order_by(Finding.id))],'verification':serial(verification) if verification else None,'obligations':[serial(o) for o in db.scalars(select(Obligation).where(Obligation.case_id==cid))],'audit':[serial(a) for a in db.scalars(select(Audit).where(Audit.case_id==cid).order_by(Audit.id.desc()))],'slots':definitions[c.kind]['slots']}
+    @app.get('/api/complaints')
+    def complaints(u=Depends(current),db=Depends(db_session)):
+        records=list(db.scalars(select(Complaint).order_by(Complaint.id.desc())))
+        if has_membership(u,'national_admin'):
+            return [serial(x) for x in records]
+        if has_membership(u,'regional_officer'):
+            return [serial(x) for x in records if has_membership(u,'regional_officer',region=x.region)]
+        if has_membership(u,'institution'):
+            return [serial(x) for x in records if has_membership(u,'institution',institution=x.institution)]
+        return [serial(x) for x in records if permitted(db.get(Case,x.case_id),u,db)]
+    @app.post('/api/complaints')
+    def create_complaint(body:ComplaintCreate,u=Depends(current),db=Depends(db_session)):
+        case=db.get(Case,body.case_id)
+        if not case: raise HTTPException(404,'Application not found')
+        if not has_membership(u,'institution',institution=case.institution):
+            raise HTTPException(403,'Only the institution can submit a complaint')
+        if body.priority not in ['normal','high','urgent']:
+            raise HTTPException(422,'Complaint priority must be normal, high, or urgent')
+        complaint=Complaint(case_id=case.id,institution=case.institution,region=case.region,category=body.category.strip(),priority=body.priority,description=body.description.strip(),created_by=u.id)
+        db.add(complaint)
+        audit(db,case,u,'complaint_submitted',f'{complaint.category} / {complaint.priority}: {complaint.description}')
+        db.flush()
+        return serial(complaint)
+    @app.post('/api/complaints/{complaint_id}/triage')
+    def triage_complaint(complaint_id:int,body:ComplaintTriage,u=Depends(current),db=Depends(db_session)):
+        complaint=db.get(Complaint,complaint_id)
+        if not complaint: raise HTTPException(404,'Complaint not found')
+        case=db.get(Case,complaint.case_id)
+        if not case or not permitted(case,u,db): raise HTTPException(404,'Complaint not found in your scope')
+        if not (has_membership(u,'national_admin') or has_membership(u,'regional_officer',region=complaint.region)):
+            raise HTTPException(403,'Regional or national triage permission required')
+        if body.status not in ['open','under_review','referred','resolved','closed']:
+            raise HTTPException(422,'Invalid complaint status')
+        if body.priority not in ['normal','high','urgent']:
+            raise HTTPException(422,'Complaint priority must be normal, high, or urgent')
+        if complaint.version!=body.version: raise HTTPException(409,'Complaint changed; refresh')
+        complaint.status=body.status
+        complaint.priority=body.priority
+        complaint.resolution=body.resolution.strip()
+        complaint.version+=1
+        complaint.updated=datetime.now(timezone.utc).isoformat()
+        audit(db,case,u,'complaint_triaged',f'{body.status} / {body.priority}: {body.resolution.strip()}')
+        db.flush()
+        return serial(complaint)
     @app.get('/api/applications/{cid}/verification')
     def national_verification(cid:str,u=Depends(current),db=Depends(db_session)):
         c=case_for(cid,u,db)

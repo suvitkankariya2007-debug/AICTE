@@ -16,7 +16,7 @@ Latest user instruction: reuse properly where possible; defer substantial additi
 | 10 EVC/committees | Conditional EVC schedule/report gate | Expert appointment, availability/conflict/quorum, SHC/SAC/hearings |
 | 11 National verification | Separate versioned verification record with national-only actions and audit trail | Mandatory national-stage routing, official registry integration |
 | 12 Tracker | Route-driven status/colours/history, responsive scroll | Stage popovers, business calendar |
-| 13 Complaints | Deferred entirely | Separate grievance engine |
+| 13 Complaints | Application-linked complaint submission, regional/national visibility, and triage/referral statuses | Standalone grievance intake, appeals, external ombudsman integration |
 | 14 Automations | Versioned undertaking/document evidence-file uploads and description submission and verification; expiry; deadline worker; simulated notices | Real SMS/payment/NBA, PDF certificates, AI report, validated regulations |
 | 15 QA | HTTP/database tests, typecheck/build, frontend DOM interaction checks | Full real-browser E2E and visual QA, PostgreSQL/Docker execution, full security/accessibility audit |
 
