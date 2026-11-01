@@ -8,7 +8,7 @@ from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field, ConfigDict
 from sqlalchemy import select, update
 from sqlalchemy.exc import IntegrityError
-from .db import Base, User, RoleMembership, RuleSet, LoginSession, Case, Document, Finding, Obligation, Audit, Notice, setup
+from .db import Base, User, RoleMembership, RuleSet, LoginSession, Case, Assignment, Document, Finding, Obligation, Audit, Notice, setup
 from .rules import RULES, VERSION, SOURCE, validate_definitions
 from .engine import move, audit, sweep, utc
 from .config import load_settings
@@ -27,6 +27,7 @@ class Create(Strict): kind:str; idempotency_key:str=Field(min_length=8,max_lengt
 class Action(Strict): target:str; version:int; reason:str=Field(default='',max_length=4000)
 class Evidence(Strict): version:int; evidence:str=Field(min_length=5,max_length=4000); expiry:str=''
 class Assign(Strict): version:int; reviewer_id:str; reason:str=Field(min_length=5,max_length=2000)
+class Conflict(Strict): status:str; reason:str=Field(default='',max_length=2000)
 class Verify(Strict): version:int
 class Schedule(Strict): version:int; date:str; report:str=Field(default='',max_length=4000)
 class FindingCreate(Strict): description:str=Field(min_length=5,max_length=4000)
@@ -318,13 +319,37 @@ def create_app(url=None):
         if c.state in ['approved','rejected']: raise HTTPException(409,'Closed application cannot be reassigned')
         if len(body.reason.strip())<5: raise HTTPException(422,'Provide a meaningful assignment reason')
         r=db.get(User,body.reviewer_id)
-        if not r or r.role!='scrutiny_officer' or r.region!=c.region: raise HTTPException(422,'Choose an eligible reviewer in the originating region')
+        if not r or not has_membership(r,'scrutiny_officer',region=c.region): raise HTTPException(422,'Choose an eligible reviewer in the originating region')
+        if db.scalar(select(Assignment).where(Assignment.case_id==cid,Assignment.reviewer_id==r.id,Assignment.active==True,Assignment.conflict_status=='declared')):
+            raise HTTPException(409,'Reviewer has a declared conflict for this application')
         previous=c.owner
         if previous==r.id: raise HTTPException(409,'Reviewer is already assigned')
         if db.execute(update(Case).where(Case.id==cid,Case.version==body.version).values(owner=r.id,version=body.version+1)).rowcount!=1: raise HTTPException(409,'Case changed; refresh')
+        db.query(Assignment).filter(Assignment.case_id==cid,Assignment.active==True).update({'active':False,'ended':datetime.now(timezone.utc).isoformat()},synchronize_session=False)
+        db.add(Assignment(case_id=cid,reviewer_id=r.id,assigned_by=u.id,reason=body.reason.strip()))
         audit(db,c,u,'reviewer_assigned',f'{previous} → {r.id}; reason: {body.reason}')
         db.add(Notice(case_id=cid,recipient='reviewer',message=f'Reviewer assignment changed to {r.name}',level='info',dedup=f'assignment:{cid}:{body.version}'))
         return {'ok':True}
+    @app.get('/api/applications/{cid}/assignments')
+    def assignments(cid:str,u=Depends(current),db=Depends(db_session)):
+        c=case_for(cid,u,db)
+        if not (has_membership(u,'regional_officer',region=c.region) or u.id==c.owner or has_membership(u,'institution',institution=c.institution)):
+            raise HTTPException(403,'Assignment history permission required')
+        return [serial(a) for a in db.scalars(select(Assignment).where(Assignment.case_id==cid).order_by(Assignment.id))]
+    @app.post('/api/applications/{cid}/conflict')
+    def declare_conflict(cid:str,body:Conflict,u=Depends(current),db=Depends(db_session)):
+        c=case_for(cid,u,db)
+        if u.id!=c.owner or not has_membership(u,'scrutiny_officer',region=c.region):
+            raise HTTPException(403,'Assigned scrutiny reviewer required')
+        if body.status not in ['declared','cleared']: raise HTTPException(422,'Conflict status must be declared or cleared')
+        if body.status=='declared' and len(body.reason.strip())<5: raise HTTPException(422,'Provide a conflict reason')
+        assignment=db.scalar(select(Assignment).where(Assignment.case_id==cid,Assignment.reviewer_id==u.id,Assignment.active==True))
+        if not assignment: raise HTTPException(409,'No active assignment exists')
+        assignment.conflict_status=body.status
+        assignment.conflict_reason=body.reason.strip()
+        audit(db,c,u,'conflict_updated',f'{body.status}: {body.reason.strip()}')
+        db.flush()
+        return serial(assignment)
     @app.post('/api/obligations/{oid}/files')
     async def obligation_file(oid:int,version:int=Form(...),file:UploadFile=File(...),u=Depends(current),db=Depends(db_session)):
         o=db.get(Obligation,oid)
@@ -404,7 +429,9 @@ def seed(db):
     stamp=datetime.now(timezone.utc)
     for id,kind,state,offset in [('APP-DEMO-0402','new_course','scrutiny',2),('APP-DEMO-0398','eoa','decision',-9),('APP-DEMO-0310','eoa','approved',7)]:
         c=Case(id=id,institution='Pune Demo Institute',region='West Demo',kind=kind,state=state,route=RULES[kind]['route'],rule_version=VERSION,owner='officer-west',entered=(stamp-timedelta(days=8)).isoformat(),due=(stamp+timedelta(days=offset)).isoformat(),submit_key='seed:'+id)
-        db.add(c); db.flush(); db.add(Audit(case_id=id,actor='system',action='synthetic_seed',detail='Fictional demonstration record; unverified APH mapping'))
+        db.add(c); db.flush()
+        db.add(Assignment(case_id=id,reviewer_id='officer-west',assigned_by='system',reason='Synthetic initial assignment'))
+        db.add(Audit(case_id=id,actor='system',action='synthetic_seed',detail='Fictional demonstration record; unverified APH mapping'))
     c=Case(id='APP-EAST-0100',institution='Eastern Demo Institute',region='East Demo',kind='eoa',state='scrutiny',route=RULES['eoa']['route'],rule_version=VERSION,owner='officer-east',due=(stamp+timedelta(days=2)).isoformat(),submit_key='seed:east')
     db.add(c); db.flush()
     db.add_all([Obligation(case_id='APP-DEMO-0310',kind='undertaking',title='Submit annual compliance declaration',due=(stamp-timedelta(days=10)).isoformat()),Obligation(case_id='APP-DEMO-0310',kind='document',title='Lease evidence renewal',due=(stamp+timedelta(days=2)).isoformat())])

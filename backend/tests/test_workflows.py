@@ -237,6 +237,22 @@ def test_assignment_changes_access_and_preserves_region(client):
     login(c,'officer-west-2');assert detail(c,case['id'])['owner']=='officer-west-2'
     assert c.post('/api/applications/'+case['id']+'/assign',json=base).status_code==403
     assert any(a['action']=='reviewer_assigned' for a in detail(c,case['id'])['audit'])
+    history=c.get('/api/applications/'+case['id']+'/assignments').json()
+    assert len(history)==2
+    assert history[-1]['reviewer_id']=='officer-west-2'
+
+def test_assignment_conflict_blocks_reassignment(client):
+    login(client,'officer-west')
+    case=detail(client,'APP-DEMO-0402')
+    declared=client.post('/api/applications/'+case['id']+'/conflict',json={'status':'declared','reason':'Prior relationship with institution'})
+    assert declared.status_code==200
+    login(client,'regional-west')
+    case=detail(client,'APP-DEMO-0402')
+    assert client.post('/api/applications/'+case['id']+'/assign',json={
+        'version':case['version'],
+        'reviewer_id':'officer-west',
+        'reason':'Reassign for workload',
+    }).status_code==409
 
 def test_compliance_files_versions_and_isolation(client):
     c=client;login(c,'college-west');o=c.get('/api/obligations').json()[0]

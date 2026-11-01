@@ -147,3 +147,5 @@ Module 2 adds persistent versioned rule sets with source/effective date/status, 
 Module 3 adds persisted document MIME/size metadata, shared upload validation for application and compliance files, and constrained safe download filenames. Migration `0005` is bootstrap-compatible; document storage remains database base64 for this demo and should move behind object storage before production.
 
 Module 4 adds structured scrutiny findings with reviewer-only creation/closure, institution responses, optimistic revisions, and audit history. Migration `0006` is added; the existing broad correction transition remains compatible while finding-level workflow is introduced.
+
+Module 5 adds durable assignment history, active reviewer conflict declaration/clearance, membership-based reviewer eligibility, and migration backfill for existing application owners. Assignment remains manual and coordinator-confirmed; automatic expertise/capacity recommendations remain deferred.

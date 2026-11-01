@@ -72,6 +72,22 @@ class Case(Base):
     schedule: Mapped[str]=mapped_column(default='')
     report: Mapped[str]=mapped_column(Text,default='')
     submit_key: Mapped[str]=mapped_column(unique=True)
+class Assignment(Base):
+    __tablename__='assignments'
+    __table_args__=(
+        Index('ix_assignments_case_created', 'case_id', 'created'),
+        Index('ix_assignments_reviewer_active', 'reviewer_id', 'active'),
+    )
+    id: Mapped[int]=mapped_column(primary_key=True)
+    case_id: Mapped[str]=mapped_column(ForeignKey('applications.id'))
+    reviewer_id: Mapped[str]=mapped_column(ForeignKey('users.id'))
+    assigned_by: Mapped[str]
+    reason: Mapped[str]=mapped_column(Text)
+    active: Mapped[bool]=mapped_column(default=True)
+    conflict_status: Mapped[str]=mapped_column(default='not_declared')
+    conflict_reason: Mapped[str]=mapped_column(Text,default='')
+    created: Mapped[str]=mapped_column(default=now)
+    ended: Mapped[str]=mapped_column(default='')
 class Document(Base):
     __tablename__='documents'
     __table_args__=(Index('ix_documents_case_slot', 'case_id', 'slot'),)

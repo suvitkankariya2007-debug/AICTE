@@ -79,3 +79,13 @@ Validation note: dependencies were installed from the existing `backend/requirem
 - Added optimistic finding revisions and case-linked audit events.
 - Added migration `0006_findings`.
 - Backend regression suite: **21 passed**; frontend tests, typecheck, and build remain passing.
+
+## Module 5 — assignment and task foundation
+
+- Added durable assignment history with active/inactive records, assigning actor, reason, and timestamps.
+- Added reviewer conflict declaration and clearance, with conflict reviewers blocked from assignment.
+- Reviewer eligibility now uses active scoped memberships.
+- Added assignment history and conflict APIs with authorization checks.
+- Existing applications are backfilled into assignment history during migration `0007_assignments`.
+- Added regression coverage for reassignment history, conflict blocking, closed/stale handling, and scoped access.
+- Backend regression suite: **22 passed**.
