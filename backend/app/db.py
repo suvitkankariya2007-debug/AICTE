@@ -85,6 +85,21 @@ class Document(Base):
     sha256: Mapped[str]
     revision: Mapped[int]
     created: Mapped[str]=mapped_column(default=now)
+class Finding(Base):
+    __tablename__='findings'
+    __table_args__=(
+        Index('ix_findings_case_status', 'case_id', 'status'),
+    )
+    id: Mapped[int]=mapped_column(primary_key=True)
+    case_id: Mapped[str]=mapped_column(ForeignKey('applications.id'))
+    description: Mapped[str]=mapped_column(Text)
+    status: Mapped[str]=mapped_column(default='open')
+    response: Mapped[str]=mapped_column(Text,default='')
+    version: Mapped[int]=mapped_column(default=1)
+    created_by: Mapped[str]
+    created: Mapped[str]=mapped_column(default=now)
+    responded: Mapped[str]=mapped_column(default='')
+    closed: Mapped[str]=mapped_column(default='')
 class Obligation(Base):
     __tablename__='obligations'
     __table_args__=(

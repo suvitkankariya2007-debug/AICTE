@@ -145,3 +145,5 @@ Added persisted active role memberships scoped by role, region, and institution,
 Module 2 adds persistent versioned rule sets with source/effective date/status, validated draft publishing for national oversight, and application binding to the latest effective published rules. Existing cases retain their stored route/version; unstarted future rules are not selected.
 
 Module 3 adds persisted document MIME/size metadata, shared upload validation for application and compliance files, and constrained safe download filenames. Migration `0005` is bootstrap-compatible; document storage remains database base64 for this demo and should move behind object storage before production.
+
+Module 4 adds structured scrutiny findings with reviewer-only creation/closure, institution responses, optimistic revisions, and audit history. Migration `0006` is added; the existing broad correction transition remains compatible while finding-level workflow is introduced.

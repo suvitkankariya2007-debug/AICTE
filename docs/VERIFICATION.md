@@ -69,3 +69,13 @@ Validation note: dependencies were installed from the existing `backend/requirem
 - Download responses use the stored MIME type and a constrained safe filename.
 - Added migration `0005_document_metadata`, compatible with both fresh migrations and the legacy schema bootstrap.
 - Added regression coverage for metadata persistence and safe download headers.
+
+## Module 4 — scrutiny findings and correction responses
+
+- Added persisted finding records with open, responded, and closed states.
+- Added reviewer finding creation restricted to the assigned reviewer.
+- Added institution responses scoped to the owning institution.
+- Added reviewer closure requiring an institutional response.
+- Added optimistic finding revisions and case-linked audit events.
+- Added migration `0006_findings`.
+- Backend regression suite: **21 passed**; frontend tests, typecheck, and build remain passing.

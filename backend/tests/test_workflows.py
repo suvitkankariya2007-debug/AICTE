@@ -144,6 +144,23 @@ def test_full_correction_and_decision(client):
     assert action(c,final,'scrutiny').status_code==409
     login(c,'college-east');assert c.get('/api/documents/'+str(final['documents'][0]['id'])).status_code==404
 
+def test_finding_response_and_closure(client):
+    login(client,'officer-west-2')
+    assert client.post('/api/applications/APP-DEMO-0402/findings',json={'description':'Unauthorised reviewer finding'}).status_code==404
+    login(client,'officer-west')
+    finding=client.post('/api/applications/APP-DEMO-0402/findings',json={'description':'Programme evidence needs clarification'}).json()
+    assert finding['status']=='open'
+    assert client.post(f"/api/findings/{finding['id']}/close",json={'version':finding['version']}).status_code==409
+    login(client,'college-west')
+    response=client.post(f"/api/findings/{finding['id']}/response",json={'version':finding['version'],'response':'Updated programme evidence is attached.'})
+    assert response.status_code==200
+    assert response.json()['status']=='responded'
+    login(client,'officer-west')
+    closed=client.post(f"/api/findings/{finding['id']}/close",json={'version':response.json()['version']})
+    assert closed.status_code==200
+    assert closed.json()['status']=='closed'
+    assert detail(client,'APP-DEMO-0402')['findings'][0]['status']=='closed'
+
 def test_evc_gates(client):
     c=client;login(c,'officer-west');a=detail(c,'APP-DEMO-0402');assert action(c,a,'evc').status_code==200
     a=detail(c,a['id']);assert action(c,a,'decision').status_code==422

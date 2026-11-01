@@ -8,7 +8,7 @@ from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field, ConfigDict
 from sqlalchemy import select, update
 from sqlalchemy.exc import IntegrityError
-from .db import Base, User, RoleMembership, RuleSet, LoginSession, Case, Document, Obligation, Audit, Notice, setup
+from .db import Base, User, RoleMembership, RuleSet, LoginSession, Case, Document, Finding, Obligation, Audit, Notice, setup
 from .rules import RULES, VERSION, SOURCE, validate_definitions
 from .engine import move, audit, sweep, utc
 from .config import load_settings
@@ -29,6 +29,9 @@ class Evidence(Strict): version:int; evidence:str=Field(min_length=5,max_length=
 class Assign(Strict): version:int; reviewer_id:str; reason:str=Field(min_length=5,max_length=2000)
 class Verify(Strict): version:int
 class Schedule(Strict): version:int; date:str; report:str=Field(default='',max_length=4000)
+class FindingCreate(Strict): description:str=Field(min_length=5,max_length=4000)
+class FindingResponse(Strict): version:int; response:str=Field(min_length=5,max_length=4000)
+class FindingClose(Strict): version:int
 class RuleDraft(Strict):
     version:str=Field(min_length=1,max_length=80)
     source:str=Field(min_length=5,max_length=4000)
@@ -217,7 +220,7 @@ def create_app(url=None):
         c=case_for(cid,u,db)
         definitions=rule_for(db,c.rule_version)
         if c.kind not in definitions: raise HTTPException(503,'Application checklist is unavailable')
-        return {**serial(c),'documents':[serial(d) for d in db.scalars(select(Document).where(Document.case_id==cid).order_by(Document.id))],'obligations':[serial(o) for o in db.scalars(select(Obligation).where(Obligation.case_id==cid))],'audit':[serial(a) for a in db.scalars(select(Audit).where(Audit.case_id==cid).order_by(Audit.id.desc()))],'slots':definitions[c.kind]['slots']}
+        return {**serial(c),'documents':[serial(d) for d in db.scalars(select(Document).where(Document.case_id==cid).order_by(Document.id))],'findings':[serial(f) for f in db.scalars(select(Finding).where(Finding.case_id==cid).order_by(Finding.id))],'obligations':[serial(o) for o in db.scalars(select(Obligation).where(Obligation.case_id==cid))],'audit':[serial(a) for a in db.scalars(select(Audit).where(Audit.case_id==cid).order_by(Audit.id.desc()))],'slots':definitions[c.kind]['slots']}
     @app.post('/api/applications/{cid}/documents')
     async def upload(cid:str,slot:str=Form(...),version:int=Form(...),file:UploadFile=File(...),u=Depends(current),db=Depends(db_session)):
         c=case_for(cid,u,db)
@@ -260,6 +263,34 @@ def create_app(url=None):
         if not body.reason.strip(): raise HTTPException(422,'Record review findings / reasons')
         if c.state=='evc' and body.target=='decision' and (not c.schedule or not c.report.strip()): raise HTTPException(422,'EVC schedule and report required')
         return serial(move(db,c,u,body.target,body.version,body.reason))
+    @app.post('/api/applications/{cid}/findings')
+    def create_finding(cid:str,body:FindingCreate,u=Depends(current),db=Depends(db_session)):
+        c=case_for(cid,u,db)
+        if not has_membership(u,'scrutiny_officer',region=c.region) or c.owner!=u.id: raise HTTPException(403,'Assigned scrutiny reviewer required')
+        if c.state not in ['scrutiny','correction']: raise HTTPException(409,'Findings are only recorded during scrutiny')
+        finding=Finding(case_id=cid,description=body.description.strip(),created_by=u.id)
+        db.add(finding); audit(db,c,u,'finding_created',body.description.strip()); db.flush()
+        return serial(finding)
+    @app.post('/api/findings/{fid}/response')
+    def respond_finding(fid:int,body:FindingResponse,u=Depends(current),db=Depends(db_session)):
+        finding=db.get(Finding,fid)
+        if not finding: raise HTTPException(404,'Finding not found')
+        c=case_for(finding.case_id,u,db)
+        if not has_membership(u,'institution',institution=c.institution): raise HTTPException(403,'Institution permission required')
+        if finding.status!='open': raise HTTPException(409,'Finding is not awaiting a response')
+        if db.execute(update(Finding).where(Finding.id==fid,Finding.version==body.version,Finding.status=='open').values(response=body.response.strip(),status='responded',version=body.version+1,responded=datetime.now(timezone.utc).isoformat())).rowcount!=1: raise HTTPException(409,'Finding changed; refresh')
+        audit(db,c,u,'finding_responded',f'Finding {fid}: {body.response.strip()}'); db.flush(); db.refresh(finding)
+        return serial(finding)
+    @app.post('/api/findings/{fid}/close')
+    def close_finding(fid:int,body:FindingClose,u=Depends(current),db=Depends(db_session)):
+        finding=db.get(Finding,fid)
+        if not finding: raise HTTPException(404,'Finding not found')
+        c=case_for(finding.case_id,u,db)
+        if not has_membership(u,'scrutiny_officer',region=c.region) or c.owner!=u.id: raise HTTPException(403,'Assigned scrutiny reviewer required')
+        if finding.status!='responded': raise HTTPException(409,'Finding requires an institutional response')
+        if db.execute(update(Finding).where(Finding.id==fid,Finding.version==body.version,Finding.status=='responded').values(status='closed',version=body.version+1,closed=datetime.now(timezone.utc).isoformat())).rowcount!=1: raise HTTPException(409,'Finding changed; refresh')
+        audit(db,c,u,'finding_closed',f'Finding {fid} closed after institutional response'); db.flush(); db.refresh(finding)
+        return serial(finding)
     @app.post('/api/applications/{cid}/evc')
     def evc(cid:str,body:Schedule,u=Depends(current),db=Depends(db_session)):
         c=case_for(cid,u,db)
