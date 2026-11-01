@@ -173,3 +173,5 @@ Architecture persona foundation adds stage coordinator, stage member, and nation
 The stage and national verification foundation is tested at the API boundary: stage-member assignment isolation and read-only restrictions are enforced server-side, while dashboard differences are presentation-only until dedicated action models are added.
 
 Stage workflow module adds same-region Stage Coordinator assignment through EVC participants and structured Stage Member findings (category, severity, description, recommendation) with active-assignment authorization. National Verification Officer remains read-only.
+
+National verification module adds a separate versioned record with verified, clarification, and not-verified outcomes. Only the national verification membership can write it; the regional route state remains unchanged and completed verification cannot be overwritten.

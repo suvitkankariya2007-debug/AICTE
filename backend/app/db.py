@@ -140,6 +140,20 @@ class Finding(Base):
     created: Mapped[str]=mapped_column(default=now)
     responded: Mapped[str]=mapped_column(default='')
     closed: Mapped[str]=mapped_column(default='')
+class NationalVerification(Base):
+    __tablename__='national_verifications'
+    __table_args__=(
+        Index('ix_national_verifications_case_status', 'case_id', 'status'),
+    )
+    id: Mapped[int]=mapped_column(primary_key=True)
+    case_id: Mapped[str]=mapped_column(ForeignKey('applications.id'))
+    status: Mapped[str]=mapped_column(default='pending')
+    decision: Mapped[str]=mapped_column(default='')
+    note: Mapped[str]=mapped_column(Text,default='')
+    version: Mapped[int]=mapped_column(default=1)
+    reviewed_by: Mapped[str]=mapped_column(default='')
+    created: Mapped[str]=mapped_column(default=now)
+    reviewed: Mapped[str]=mapped_column(default='')
 class Obligation(Base):
     __tablename__='obligations'
     __table_args__=(

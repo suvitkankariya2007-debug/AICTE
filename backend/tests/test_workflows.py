@@ -68,6 +68,33 @@ def test_stage_coordinator_assigns_and_stage_member_records_structured_finding(c
     assert finding.json()['severity']=='high'
     assert finding.json()['category']=='academic_compliance'
     assert client.post('/api/applications/APP-EAST-0100/findings',json={'description':'Out of scope finding'}).status_code==404
+
+def test_national_verification_record_is_nationally_scoped(client):
+    login(client,'regional-west')
+    assert client.get('/api/applications/APP-DEMO-0402/verification').status_code==403
+    login(client,'national-verification')
+    assert client.get('/api/applications/APP-DEMO-0402/verification').json() is None
+    review=client.post('/api/applications/APP-DEMO-0402/verification',json={
+        'version':1,
+        'decision':'clarification',
+        'note':'National evidence register requires one additional signed declaration.',
+    })
+    assert review.status_code==200
+    assert review.json()['status']=='clarification'
+    detail_record=client.get('/api/applications/APP-DEMO-0402').json()['verification']
+    assert detail_record['decision']=='clarification'
+    review=client.post('/api/applications/APP-DEMO-0402/verification',json={
+        'version':review.json()['version'],
+        'decision':'verified',
+        'note':'The additional declaration was reviewed and the national check is complete.',
+    })
+    assert review.status_code==200
+    assert review.json()['status']=='verified'
+    assert client.post('/api/applications/APP-DEMO-0402/verification',json={
+        'version':review.json()['version'],
+        'decision':'rejected',
+        'note':'This completed record must not be changed.',
+    }).status_code==409
     login(client,'evc-west-1')
     assert [c['id'] for c in client.get('/api/applications').json()]==['APP-DEMO-0402']
     login(client,'national-verification')

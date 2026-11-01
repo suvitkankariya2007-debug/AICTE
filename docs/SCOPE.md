@@ -14,7 +14,7 @@ Latest user instruction: reuse properly where possible; defer substantial additi
 | 8 Dashboards | Eight architecture personas represented with role-specific dashboard copy; scoped application access for stage members, stage coordinators, and national verification | Complaints/referrals, pagination, analytics charts, national verification actions |
 | 9 Clarification | Reasoned correction loop, versioned files, audit | Per-finding approval/closure and multiple simultaneous clarification records |
 | 10 EVC/committees | Conditional EVC schedule/report gate | Expert appointment, availability/conflict/quorum, SHC/SAC/hearings |
-| 11 National verification | Deferred entirely | No invented mandatory national stage |
+| 11 National verification | Separate versioned verification record with national-only actions and audit trail | Mandatory national-stage routing, official registry integration |
 | 12 Tracker | Route-driven status/colours/history, responsive scroll | Stage popovers, business calendar |
 | 13 Complaints | Deferred entirely | Separate grievance engine |
 | 14 Automations | Versioned undertaking/document evidence-file uploads and description submission and verification; expiry; deadline worker; simulated notices | Real SMS/payment/NBA, PDF certificates, AI report, validated regulations |

@@ -160,6 +160,13 @@ Validation note: dependencies were installed from the existing `backend/requirem
 - Stage Coordinators can assign eligible same-region Stage Members through the existing EVC participant model.
 - Stage Members can submit structured findings only for active participant assignments; they cannot transition applications.
 - Backend regression suite: **29 passed**; frontend tests: **4 passed**; TypeScript/Vite build passed.
+
+## National verification record
+
+- Added migration `0015_national_verification`.
+- National Verification Officers can record verified, clarification, or not-verified results in a separate versioned record.
+- Results are audit logged and visible on the application detail response without changing the regional route state.
+- Completed verification records cannot be overwritten.
 - Backend regression suite: **27 passed**; frontend tests: **4 passed**; TypeScript/Vite build passed.
 
 ## Role-specific dashboard upgrade

@@ -8,7 +8,7 @@ from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field, ConfigDict
 from sqlalchemy import select, update
 from sqlalchemy.exc import IntegrityError
-from .db import Base, User, RoleMembership, RuleSet, LoginSession, Case, Assignment, EvcParticipant, Document, Finding, Obligation, Audit, Notice, WorkerHeartbeat, setup
+from .db import Base, User, RoleMembership, RuleSet, LoginSession, Case, Assignment, EvcParticipant, Document, Finding, NationalVerification, Obligation, Audit, Notice, WorkerHeartbeat, setup
 from .rules import RULES, VERSION, SOURCE, validate_definitions
 from .engine import move, audit, sweep, utc
 from .config import load_settings
@@ -40,6 +40,10 @@ class FindingCreate(Strict):
     recommendation:str=Field(default='',max_length=4000)
 class FindingResponse(Strict): version:int; response:str=Field(min_length=5,max_length=4000)
 class FindingClose(Strict): version:int
+class NationalVerificationReview(Strict):
+    version:int
+    decision:str
+    note:str=Field(min_length=5,max_length=4000)
 class RuleDraft(Strict):
     version:str=Field(min_length=1,max_length=80)
     source:str=Field(min_length=5,max_length=4000)
@@ -240,7 +244,41 @@ def create_app(url=None):
         c=case_for(cid,u,db)
         definitions=rule_for(db,c.rule_version)
         if c.kind not in definitions: raise HTTPException(503,'Application checklist is unavailable')
-        return {**serial(c),'documents':[serial(d) for d in db.scalars(select(Document).where(Document.case_id==cid).order_by(Document.id))],'findings':[serial(f) for f in db.scalars(select(Finding).where(Finding.case_id==cid).order_by(Finding.id))],'obligations':[serial(o) for o in db.scalars(select(Obligation).where(Obligation.case_id==cid))],'audit':[serial(a) for a in db.scalars(select(Audit).where(Audit.case_id==cid).order_by(Audit.id.desc()))],'slots':definitions[c.kind]['slots']}
+        verification=db.scalar(select(NationalVerification).where(NationalVerification.case_id==cid).order_by(NationalVerification.id.desc()))
+        return {**serial(c),'documents':[serial(d) for d in db.scalars(select(Document).where(Document.case_id==cid).order_by(Document.id))],'findings':[serial(f) for f in db.scalars(select(Finding).where(Finding.case_id==cid).order_by(Finding.id))],'verification':serial(verification) if verification else None,'obligations':[serial(o) for o in db.scalars(select(Obligation).where(Obligation.case_id==cid))],'audit':[serial(a) for a in db.scalars(select(Audit).where(Audit.case_id==cid).order_by(Audit.id.desc()))],'slots':definitions[c.kind]['slots']}
+    @app.get('/api/applications/{cid}/verification')
+    def national_verification(cid:str,u=Depends(current),db=Depends(db_session)):
+        c=case_for(cid,u,db)
+        if not has_membership(u,'national_verification_officer'):
+            raise HTTPException(403,'National verification permission required')
+        record=db.scalar(select(NationalVerification).where(NationalVerification.case_id==cid).order_by(NationalVerification.id.desc()))
+        return serial(record) if record else None
+    @app.post('/api/applications/{cid}/verification')
+    def review_national_verification(cid:str,body:NationalVerificationReview,u=Depends(current),db=Depends(db_session)):
+        c=case_for(cid,u,db)
+        if not has_membership(u,'national_verification_officer'):
+            raise HTTPException(403,'National verification permission required')
+        if c.state in ['draft','correction']:
+            raise HTTPException(409,'National verification requires a submitted review case')
+        if body.decision not in ['verified','clarification','rejected']:
+            raise HTTPException(422,'Decision must be verified, clarification, or rejected')
+        record=db.scalar(select(NationalVerification).where(NationalVerification.case_id==cid).order_by(NationalVerification.id.desc()))
+        if record and record.status=='verified':
+            raise HTTPException(409,'National verification is already complete')
+        if not record:
+            record=NationalVerification(case_id=cid,version=1)
+            db.add(record)
+        if record.version!=body.version:
+            raise HTTPException(409,'Verification changed; refresh')
+        record.status=body.decision
+        record.decision=body.decision
+        record.note=body.note.strip()
+        record.reviewed_by=u.id
+        record.reviewed=datetime.now(timezone.utc).isoformat()
+        record.version+=1
+        audit(db,c,u,'national_verification_'+body.decision,body.note.strip())
+        db.flush()
+        return serial(record)
     @app.post('/api/applications/{cid}/documents')
     async def upload(cid:str,slot:str=Form(...),version:int=Form(...),file:UploadFile=File(...),u=Depends(current),db=Depends(db_session)):
         c=case_for(cid,u,db)
