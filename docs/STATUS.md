@@ -15,6 +15,7 @@ Updated: 1 November 2026
 - Separate national verification records with versioned outcomes and audit trails.
 - Application-linked complaints and regional/national referral triage.
 - Optional paginated application and complaint queue APIs.
+- Frontend application and complaint queues consume pagination metadata with accessible previous/next controls.
 - Backend, frontend, build, and migration validation in the local environment.
 
 ## Remaining

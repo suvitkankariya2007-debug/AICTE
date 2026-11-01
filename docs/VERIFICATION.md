@@ -181,6 +181,7 @@ Validation note: dependencies were installed from the existing `backend/requirem
 - Application and complaint APIs preserve their existing list response by default.
 - Supplying `page` and `page_size` returns bounded items with `total`, `pages`, and page metadata.
 - Backend regression suite: **32 passed**; frontend tests: **4 passed**; TypeScript/Vite build passed.
+- Frontend queues now consume paginated application and complaint responses; frontend tests: **4 passed**; TypeScript/Vite build passed.
 - Backend regression suite: **27 passed**; frontend tests: **4 passed**; TypeScript/Vite build passed.
 
 ## Role-specific dashboard upgrade
