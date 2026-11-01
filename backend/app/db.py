@@ -117,6 +117,11 @@ class Document(Base):
     sha256: Mapped[str]
     revision: Mapped[int]
     created: Mapped[str]=mapped_column(default=now)
+    processing_status: Mapped[str]=mapped_column(default='pending')
+    extracted_text: Mapped[str]=mapped_column(Text,default='')
+    extraction_error: Mapped[str]=mapped_column(Text,default='')
+    reviewed_by: Mapped[str]=mapped_column(default='')
+    reviewed_at: Mapped[str]=mapped_column(default='')
 class Finding(Base):
     __tablename__='findings'
     __table_args__=(

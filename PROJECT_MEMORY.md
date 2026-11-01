@@ -155,3 +155,5 @@ Module 6 adds EVC participant assignment, acceptance/decline, conflict handling,
 Module 7 adds compliance clarification/rejection state, reviewer reason, verification actor/time metadata, and mandatory replacement evidence after clarification. Compliance status remains separate from application status; real obligation templates and statutory rules remain deferred.
 
 Module 8 adds notification delivery lifecycle metadata and national-oversight retry for failed simulated deliveries. Deadline deduplication remains persistent; real provider adapters, retry backoff, and transactional outbox remain deferred.
+
+Module 10 adds a reviewable document extraction foundation. Plain text is extracted deterministically; PDFs remain failed with an explicit OCR-not-configured error. Extracted content is never treated as authoritative until an authorized reviewer accepts it.

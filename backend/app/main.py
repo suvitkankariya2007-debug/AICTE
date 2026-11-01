@@ -234,7 +234,8 @@ def create_app(url=None):
         data,content_type,name=await read_upload(file)
         if db.execute(update(Case).where(Case.id==cid,Case.version==version).values(version=version+1)).rowcount!=1: raise HTTPException(409,'Case changed; refresh')
         docs=list(db.scalars(select(Document).where(Document.case_id==cid,Document.slot==slot)))
-        d=Document(case_id=cid,slot=slot,filename=name,content_type=content_type,size=len(data),content=base64.b64encode(data).decode(),sha256=hashlib.sha256(data).hexdigest(),revision=len(docs)+1)
+        extracted=data.decode('utf-8') if content_type=='text/plain' else ''
+        d=Document(case_id=cid,slot=slot,filename=name,content_type=content_type,size=len(data),content=base64.b64encode(data).decode(),sha256=hashlib.sha256(data).hexdigest(),revision=len(docs)+1,processing_status='extracted' if extracted else 'pending',extracted_text=extracted)
         db.add(d); audit(db,c,u,'evidence_uploaded',f'{slot}; revision {d.revision}; sha256 {d.sha256}'); db.flush(); return serial(d)
     @app.get('/api/documents/{did}')
     def download(did:int,u=Depends(current),db=Depends(db_session)):
@@ -243,6 +244,40 @@ def create_app(url=None):
         case_for(d.case_id,u,db)
         filename=re.sub(r'[^A-Za-z0-9._ -]','_',d.filename).strip(' .') or 'evidence'
         return Response(base64.b64decode(d.content),media_type=d.content_type or 'application/octet-stream',headers={'Content-Disposition':f'attachment; filename="{filename}"'})
+    @app.post('/api/documents/{did}/process')
+    def process_document(did:int,u=Depends(current),db=Depends(db_session)):
+        d=db.get(Document,did)
+        if not d: raise HTTPException(404,'Document not found')
+        c=case_for(d.case_id,u,db)
+        if not has_membership(u,'regional_officer',region=c.region) and not has_membership(u,'national_admin'):
+            raise HTTPException(403,'Reviewer permission required')
+        if d.content_type!='text/plain':
+            d.processing_status='failed'
+            d.extraction_error='OCR adapter is not configured for PDF content'
+            audit(db,c,u,'document_extraction_failed',f'{d.filename}: {d.extraction_error}')
+            db.flush()
+            return serial(d)
+        d.extracted_text=base64.b64decode(d.content).decode('utf-8')
+        d.processing_status='extracted'
+        d.extraction_error=''
+        audit(db,c,u,'document_extracted',f'{d.filename}; text length {len(d.extracted_text)}')
+        db.flush()
+        return serial(d)
+    @app.post('/api/documents/{did}/review')
+    def review_document(did:int,body:Verify,u=Depends(current),db=Depends(db_session)):
+        d=db.get(Document,did)
+        if not d: raise HTTPException(404,'Document not found')
+        c=case_for(d.case_id,u,db)
+        if not has_membership(u,'regional_officer',region=c.region) and not has_membership(u,'national_admin'):
+            raise HTTPException(403,'Reviewer permission required')
+        if d.processing_status!='extracted' or not d.extracted_text:
+            raise HTTPException(409,'Extracted text must be available before review')
+        d.processing_status='reviewed'
+        d.reviewed_by=u.id
+        d.reviewed_at=datetime.now(timezone.utc).isoformat()
+        audit(db,c,u,'document_extraction_reviewed',f'{d.filename}; extracted text accepted for review')
+        db.flush()
+        return serial(d)
     @app.post('/api/applications/{cid}/submit')
     def submit(cid:str,body:Verify,u=Depends(current),db=Depends(db_session)):
         c=case_for(cid,u,db)
@@ -408,7 +443,8 @@ def create_app(url=None):
         if db.execute(update(Obligation).where(Obligation.id==oid,Obligation.version==version).values(status='pending',evidence='',proposed_expiry='',review_note='',verified_by='',verified_at='',requires_replacement=False,version=version+1)).rowcount!=1: raise HTTPException(409,'Obligation changed; refresh')
         slot=f'obligation:{oid}'
         prior=list(db.scalars(select(Document).where(Document.case_id==c.id,Document.slot==slot)))
-        doc=Document(case_id=c.id,slot=slot,filename=filename,content_type=content_type,size=len(data),content=base64.b64encode(data).decode(),sha256=hashlib.sha256(data).hexdigest(),revision=len(prior)+1)
+        extracted=data.decode('utf-8') if content_type=='text/plain' else ''
+        doc=Document(case_id=c.id,slot=slot,filename=filename,content_type=content_type,size=len(data),content=base64.b64encode(data).decode(),sha256=hashlib.sha256(data).hexdigest(),revision=len(prior)+1,processing_status='extracted' if extracted else 'pending',extracted_text=extracted)
         db.add(doc)
         audit(db,c,u,'compliance_file_uploaded',f'{o.title}; revision {doc.revision}; sha256 {doc.sha256}; submission still required')
         db.flush();return serial(doc)

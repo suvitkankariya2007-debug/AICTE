@@ -123,6 +123,22 @@ def test_document_metadata_and_safe_download_name(client):
         downloaded.headers['content-disposition'],
     )
 
+def test_document_extraction_requires_reviewer_and_manual_review(client):
+    login(client,'college-west')
+    case=create(client,key='extraction-001')
+    uploaded=upload(client,case['id'],detail(client,case['id'])['slots'][0],b'Programme proposal text','text/plain','proposal.txt')
+    document=uploaded.json()
+    assert document['processing_status']=='extracted'
+    assert document['extracted_text']=='Programme proposal text'
+    assert client.post(f"/api/documents/{document['id']}/review",json={'version':1}).status_code==403
+    login(client,'regional-west')
+    processed=client.post(f"/api/documents/{document['id']}/process")
+    assert processed.status_code==200
+    reviewed=client.post(f"/api/documents/{document['id']}/review",json={'version':1})
+    assert reviewed.status_code==200
+    assert reviewed.json()['processing_status']=='reviewed'
+    assert reviewed.json()['reviewed_by']=='regional-west'
+
 def test_full_correction_and_decision(client):
     c=client; login(c,'college-west');a=create(c);id=a['id']
     for slot in detail(c,id)['slots']:assert upload(c,id,slot).status_code==200

@@ -116,3 +116,11 @@ Validation note: dependencies were installed from the existing `backend/requirem
 - Added national-oversight-only retry for failed notifications.
 - Retry clears the failure and records an audit event; deduplication remains unchanged.
 - Added migration `0011_notification_delivery` and retry regression coverage.
+
+## Module 10 — document extraction foundation
+
+- Added document processing status, extracted text, extraction error, and reviewer metadata.
+- Plain-text uploads use a deterministic built-in extraction adapter.
+- PDF processing remains explicitly failed until a real OCR provider is configured.
+- Added reviewer-only process and extraction-review endpoints.
+- Added migration `0012_document_extraction` and regression coverage for authorization and manual review.
