@@ -104,3 +104,16 @@ Prototype evaluation should demonstrate workflow accuracy, alert timeliness, dep
 ## Continuity limits
 
 Separate chats do not automatically share their full histories. In a new chat, identify this repository and `test` branch and ask the assistant to read AGENTS.md and PROJECT_MEMORY.md first. Treat repo records as curated project context, not a verbatim chat archive; distinguish confirmed facts from assumptions.
+
+
+## Implementation checkpoint — 1 November 2026
+
+Latest user scope: reuse properly where possible and defer additional substantial engines. Current tested slice implements shared persisted applications, three illustrative checklists, two routes, permission-scoped institution/reviewer/regional/oversight accounts, reasoned correction/resubmission, versioned documents, EVC scheduling/report gate, authorised demo decisions, undertaking/document evidence references and verification, actual renewal dates, deadline worker, deduplicated simulated notices and transactional audit.
+
+Licensed reusable foundations: transitions (MIT), SQLAlchemy, FastAPI, React/Vite and Lucide. Same-PS repositories have no confirmed reusable licence, so their code was studied but not copied. Sources and exact prompt coverage are in docs/REUSE.md and docs/SCOPE.md. This is deliberately not completion of every original prompt.
+
+Verified locally: 10 backend HTTP/database scenarios, 4 frontend jsdom interaction scenarios, TypeScript/build, fresh SQLite migration, uvicorn startup and worker sweep. Managed browser preview could not access the Python virtual environment; no browser E2E or pixel-level visual QA claimed. PostgreSQL/Docker execution remains unverified.
+
+Deferred: APH registry approval/import, numeric regulation/OCR engine, remaining official role workspaces, workload assignment, expert appointment/quorum, SHC/SAC/hearings, national referrals, grievances, full compliance evidence files, live SMS/payment/NBA, AI drafts and certificate PDFs. No external API keys required for current demo. User explicitly authorised pushing tested work to test; main remains untouched.
+
+Next: use README.md to launch; address docs/SCOPE.md deferred list only when user expands scope; preserve test-only pushes and rerun relevant checks after changes.
