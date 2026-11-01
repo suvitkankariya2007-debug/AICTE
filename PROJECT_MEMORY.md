@@ -163,3 +163,5 @@ Module 11 adds database-backed readiness and a persistent deadline-worker heartb
 Module 12 corrected the Docker Compose PostgreSQL URL to the installed psycopg driver format and validated it through configuration tests. Docker/PostgreSQL runtime remains unverified because Docker is unavailable locally.
 
 Module 13 adds a Playwright browser smoke-test harness with mocked APIs and keyboard/accessibility checks. Vitest is scoped to `src`; browser execution remains pending until Playwright Chromium is installed.
+
+The catalogue upgrade now exposes twenty populated application categories from the supplied workbook across four illustrative tracks. The frontend groups category selection by track, while legacy `new_course` and EoA slots remain compatible with existing seeded cases and tests.

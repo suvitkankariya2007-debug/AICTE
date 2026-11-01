@@ -85,6 +85,18 @@ def test_rule_registry_draft_publish_and_binding(client):
     assert case['route']==['scrutiny','decision']
     assert detail(client,case['id'])['slots']==['Renewal declaration']
 
+def test_expanded_application_catalogue_has_tracks_and_checklists(client):
+    login(client,'college-west')
+    rules=client.get('/api/rules').json()
+    assert len(rules['types'])==20
+    assert {definition['track'] for definition in rules['types'].values()}=={
+        'T1 · Heavy physical and legal verification',
+        'T2 · Academic and programme modifications',
+        'T3 · Routine and fast-track approvals',
+        'T4 · Structural and administrative reorganisation',
+    }
+    assert rules['types']['online_odl']['slots']
+
 def test_request_correlation_and_health(client):
     response=client.get('/api/health',headers={'X-Request-ID':'test-request-id'})
     assert response.status_code==200
@@ -107,7 +119,7 @@ def test_settings_reject_invalid_values(monkeypatch):
 
 def test_checklists_and_idempotency(client):
     c=client;login(c,'college-west')
-    rules=c.get('/api/rules').json();assert len({tuple(x['slots']) for x in rules['types'].values()})==3
+    rules=c.get('/api/rules').json();assert len({tuple(x['slots']) for x in rules['types'].values()})==len(rules['types'])
     a=create(c);assert create(c)['id']==a['id']
     assert c.post('/api/applications',json={'kind':'new_course','idempotency_key':'test-request-001'}).status_code==409
     assert c.post('/api/applications/'+a['id']+'/submit',json={'version':1}).status_code==422

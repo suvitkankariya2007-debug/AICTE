@@ -146,3 +146,11 @@ Validation note: dependencies were installed from the existing `backend/requirem
 - Unit tests are scoped to `src` so Vitest does not execute Playwright files.
 - Frontend unit tests: **4 passed**; TypeScript/Vite build passed.
 - Playwright test discovery passed; execution is blocked because Chromium is not installed in the environment.
+
+## Catalogue upgrade — application categories and clearer intake
+
+- Expanded the illustrative catalogue from three to twenty populated workbook categories.
+- Added four labelled evaluation tracks and category-specific evidence checklists.
+- Grouped application selection in the frontend by evaluation track with explanatory APH-verification messaging.
+- Preserved legacy `new_course` and EoA evidence-slot compatibility for existing seeded workflows.
+- Backend regression suite: **27 passed**; frontend tests: **4 passed**; TypeScript/Vite build passed.

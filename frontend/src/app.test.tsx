@@ -3,7 +3,7 @@ import {afterEach,beforeEach,describe,it,expect,vi} from 'vitest';
 import {render,screen,fireEvent,waitFor,cleanup} from '@testing-library/react';
 import {App} from './main';
 const user={id:'college-west',name:'Ananya',role:'institution',institution:'Pune Demo Institute',region:'West Demo'};
-const rules={version:'DEMO-v1',source:'NEEDS_APH_VERIFICATION',types:{eoa:{label:'Extension of approval',route:['scrutiny','decision'],slots:['Prior approval']},new_course:{label:'New course',route:['scrutiny','evc','decision'],slots:['Programme proposal','Faculty statement']}}};
+const rules={version:'DEMO-v1',source:'NEEDS_APH_VERIFICATION',types:{eoa:{label:'Extension of approval',track:'T3 · Routine and fast-track approvals',route:['scrutiny','decision'],slots:['Prior approval']},new_course:{label:'New course',track:'T2 · Academic and programme modifications',route:['scrutiny','evc','decision'],slots:['Programme proposal','Faculty statement']}}};
 let signedIn=false;
 let calls:string[]=[];
 const sample={id:'APP-100',institution:'Pune Demo Institute',region:'West Demo',kind:'eoa',state:'scrutiny',route:['scrutiny','decision'],version:1,due:'2030-01-01T00:00:00Z',entered:'2026-11-01T00:00:00Z'};

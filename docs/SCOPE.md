@@ -7,8 +7,8 @@ Latest user instruction: reuse properly where possible; defer substantial additi
 | 0–1 Shared architecture/design | FastAPI + SQLAlchemy + React/Vite/TS; shared database, navy/white workspaces | Tailwind conversion, React Router URLs, complete feature folder refactor |
 | 2 Identity/access | Institution, assigned scrutiny reviewer, regional actor, oversight; server isolation | Seven official staff roles, verified multi-role memberships, official jurisdiction registry, production identity |
 | 3 Canonical events | Shared case IDs, transactional audit writes, optimistic revisions, creation-key dedup | Full domain event bus, notification outbox/retry providers, full normalized 30-entity schema |
-| 4 APH registry | Three illustrative versioned checklist/route configurations, marked unverified | Clause import, rule approval UI, corrigenda, year matrix |
-| 5 Submission | Specific slots, draft, upload/download, completeness, resubmission | Full conditional questionnaire, bundling, all application categories |
+| 4 APH registry | Twenty illustrative versioned checklist/route configurations across four tracks, marked unverified | Clause import, rule approval UI, corrigenda, year matrix |
+| 5 Submission | Track-grouped category selection, specific slots, draft, upload/download, completeness, resubmission | Full conditional questionnaire, bundling, official APH validation |
 | 6 Pre-scrutiny | Required presence, PDF signature/text MIME/size checks, hashes | Malware scan, OCR, identity/ratio/area/regulatory numerical checks, AI draft |
 | 7 Assignment/tasks | Regional reviewer assignment with workload counts, reason, revision check and scoped access | Automatic workload recommendation, expertise/conflicts, independent work-task lifecycle |
 | 8 Dashboards | Four functional role scopes, list/detail/filter/metrics | Remaining personas, complaints/referrals, pagination, analytics charts |

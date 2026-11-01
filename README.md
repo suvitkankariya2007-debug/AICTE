@@ -5,7 +5,7 @@ Working on `test` only. Synthetic institutions, staff, routes and deadlines. Thi
 ## Included release
 
 - Institution, assigned scrutiny reviewer, regional coordinator/decision actor and national oversight accounts; server-enforced scope.
-- Three category-specific illustrative checklists and two routes: Scrutiny → Decision, Scrutiny → EVC → Decision.
+- Twenty category-specific illustrative checklists across four evaluation tracks and two routes: Scrutiny → Decision, Scrutiny → EVC → Decision.
 - Draft creation with request-key deduplication, secure evidence download, PDF/text upload checks, document versions and hashes.
 - Correction → institutional resubmission → scrutiny. Findings/reasons are required for reviewer actions.
 - EVC schedule and report record, blocking advancement until both exist. Full expert appointment is deferred.
