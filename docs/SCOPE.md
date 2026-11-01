@@ -1,5 +1,7 @@
 # Scope and requirements map
 
+For the current completed-versus-remaining ledger, see [STATUS.md](./STATUS.md).
+
 Latest user instruction: reuse properly where possible; defer substantial additional engines. Eight personas and the full prompt pack remain the target, not the implementation status.
 
 | Prompt | Current release | Explicitly deferred |

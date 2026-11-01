@@ -119,6 +119,20 @@ def test_complaint_submission_visibility_and_referral_triage(client):
     login(client,'admin')
     closed=client.post('/api/complaints/'+str(record['id'])+'/triage',json={'version':triage.json()['version'],'status':'closed','priority':'urgent','resolution':'Referral reviewed and closed with a recorded response.'})
     assert closed.status_code==200
+
+def test_paginated_queues_preserve_scope_and_return_metadata(client):
+    login(client,'national-verification')
+    applications=client.get('/api/applications',params={'page':1,'page_size':2})
+    assert applications.status_code==200
+    assert applications.json()['page']==1
+    assert applications.json()['page_size']==2
+    assert applications.json()['total']>=3
+    assert len(applications.json()['items'])==2
+    login(client,'college-east')
+    complaints=client.get('/api/complaints',params={'page':1,'page_size':10})
+    assert complaints.status_code==200
+    assert complaints.json()['total']==0
+    assert complaints.json()['items']==[]
     login(client,'evc-west-1')
     assert [c['id'] for c in client.get('/api/applications').json()]==['APP-DEMO-0402']
     login(client,'national-verification')

@@ -2,7 +2,7 @@ import logging, os, secrets, hashlib, hmac, base64, re, time, uuid
 from pathlib import PurePath
 from datetime import datetime, timedelta, timezone
 from contextlib import asynccontextmanager
-from fastapi import FastAPI, Depends, HTTPException, Response, Request, UploadFile, File, Form
+from fastapi import FastAPI, Depends, HTTPException, Response, Request, UploadFile, File, Form, Query
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field, ConfigDict
@@ -233,8 +233,14 @@ def create_app(url=None):
         db.flush()
         return {'version':rule_set.version,'status':rule_set.status}
     @app.get('/api/applications')
-    def cases(u=Depends(current),db=Depends(db_session)):
-        return [serial(c) for c in db.scalars(select(Case).order_by(Case.entered.desc())) if permitted(c,u,db)]
+    def cases(page:int|None=Query(None,ge=1),page_size:int|None=Query(None,ge=1,le=100),u=Depends(current),db=Depends(db_session)):
+        records=[serial(c) for c in db.scalars(select(Case).order_by(Case.entered.desc())) if permitted(c,u,db)]
+        if page is None and page_size is None:
+            return records
+        current_page=page or 1
+        size=page_size or 25
+        start=(current_page-1)*size
+        return {'items':records[start:start+size],'page':current_page,'page_size':size,'total':len(records),'pages':(len(records)+size-1)//size}
     @app.post('/api/applications')
     def create(body:Create,u=Depends(current),db=Depends(db_session)):
         scope=membership(u,'institution')
@@ -257,15 +263,22 @@ def create_app(url=None):
         verification=db.scalar(select(NationalVerification).where(NationalVerification.case_id==cid).order_by(NationalVerification.id.desc()))
         return {**serial(c),'documents':[serial(d) for d in db.scalars(select(Document).where(Document.case_id==cid).order_by(Document.id))],'findings':[serial(f) for f in db.scalars(select(Finding).where(Finding.case_id==cid).order_by(Finding.id))],'verification':serial(verification) if verification else None,'obligations':[serial(o) for o in db.scalars(select(Obligation).where(Obligation.case_id==cid))],'audit':[serial(a) for a in db.scalars(select(Audit).where(Audit.case_id==cid).order_by(Audit.id.desc()))],'slots':definitions[c.kind]['slots']}
     @app.get('/api/complaints')
-    def complaints(u=Depends(current),db=Depends(db_session)):
+    def complaints(page:int|None=Query(None,ge=1),page_size:int|None=Query(None,ge=1,le=100),u=Depends(current),db=Depends(db_session)):
         records=list(db.scalars(select(Complaint).order_by(Complaint.id.desc())))
         if has_membership(u,'national_admin'):
-            return [serial(x) for x in records]
-        if has_membership(u,'regional_officer'):
-            return [serial(x) for x in records if has_membership(u,'regional_officer',region=x.region)]
-        if has_membership(u,'institution'):
-            return [serial(x) for x in records if has_membership(u,'institution',institution=x.institution)]
-        return [serial(x) for x in records if permitted(db.get(Case,x.case_id),u,db)]
+            scoped=[serial(x) for x in records]
+        elif has_membership(u,'regional_officer'):
+            scoped=[serial(x) for x in records if has_membership(u,'regional_officer',region=x.region)]
+        elif has_membership(u,'institution'):
+            scoped=[serial(x) for x in records if has_membership(u,'institution',institution=x.institution)]
+        else:
+            scoped=[serial(x) for x in records if permitted(db.get(Case,x.case_id),u,db)]
+        if page is None and page_size is None:
+            return scoped
+        current_page=page or 1
+        size=page_size or 25
+        start=(current_page-1)*size
+        return {'items':scoped[start:start+size],'page':current_page,'page_size':size,'total':len(scoped),'pages':(len(scoped)+size-1)//size}
     @app.post('/api/complaints')
     def create_complaint(body:ComplaintCreate,u=Depends(current),db=Depends(db_session)):
         case=db.get(Case,body.case_id)

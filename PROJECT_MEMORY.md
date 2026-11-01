@@ -177,3 +177,5 @@ Stage workflow module adds same-region Stage Coordinator assignment through EVC 
 National verification module adds a separate versioned record with verified, clarification, and not-verified outcomes. Only the national verification membership can write it; the regional route state remains unchanged and completed verification cannot be overwritten.
 
 Complaints module adds application-linked institution submissions with category/priority, regional and national visibility, and versioned triage through review, referral, resolution, and closure. It remains separate from the application route and does not provide external grievance or appeals integration.
+
+Status ledger is maintained in `docs/STATUS.md`. Queue APIs preserve their original list response when pagination parameters are omitted; `page` and `page_size` opt into metadata-bearing paginated responses for applications and complaints.
