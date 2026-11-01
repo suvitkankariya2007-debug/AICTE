@@ -192,6 +192,8 @@ Validation note: dependencies were installed from the existing `backend/requirem
 
 The selector was refined into a categorical two-step picker: users choose T1, T2, T3, or T4 first, then choose from only that track's application types. Frontend tests: **4 passed**; TypeScript/Vite build passed.
 
+Readability pass: base/supporting text was increased modestly without enlarging headings or metric numbers. Frontend tests: **4 passed**; Playwright: **1 passed**; TypeScript/Vite build passed.
+
 ## Browser runtime verification
 
 - Installed the pinned Playwright Chromium runtime.

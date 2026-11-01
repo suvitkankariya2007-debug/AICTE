@@ -10,6 +10,7 @@ Updated: 1 November 2026
 - Published catalogue release `DEMO-2026-v3` upgrades existing deployments without rewriting older case-bound rules.
 - Intake selector displays all 20 application types in one selectable list with track metadata.
 - Intake selector now uses four categorical track buttons followed by a shorter track-specific type list.
+- Readability pass raises body and supporting text slightly while preserving heading and metric proportions.
 - Versioned rules, evidence checklists, uploads, downloads, hashes, revisions, and audit history.
 - Scrutiny findings, clarification/resubmission, reviewer assignment, conflict declaration, and EVC quorum gates.
 - Compliance obligations, replacement evidence, expiry checks, deadline sweep, simulated notifications, retries, and worker readiness.
