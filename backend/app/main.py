@@ -1,4 +1,5 @@
 import logging, os, secrets, hashlib, hmac, base64, re, time, uuid
+from pathlib import PurePath
 from datetime import datetime, timedelta, timezone
 from contextlib import asynccontextmanager
 from fastapi import FastAPI, Depends, HTTPException, Response, Request, UploadFile, File, Form
@@ -103,6 +104,16 @@ def create_app(url=None):
             and (region is None or m.region==region)
             and (institution is None or m.institution==institution)
         ),None)
+    async def read_upload(file):
+        data=await file.read(2*1024*1024+1)
+        if not data or len(data)>2*1024*1024:
+            raise HTTPException(422,'Upload must be between 1 byte and 2 MB')
+        content_type=file.content_type or ''
+        if not ((content_type=='application/pdf' and data.startswith(b'%PDF-')) or (content_type=='text/plain' and b'\x00' not in data)):
+            raise HTTPException(422,'Demo accepts PDF or plain text evidence only')
+        filename=PurePath(file.filename or 'evidence').name
+        filename=re.sub(r'[^\w. -]','_',filename).strip(' .')[-120:] or 'evidence'
+        return data,content_type,filename
     def active_rules(db):
         now=datetime.now(timezone.utc).isoformat()
         return db.scalar(select(RuleSet).where(
@@ -213,21 +224,18 @@ def create_app(url=None):
         if not has_membership(u,'institution',institution=c.institution) or c.state not in ['draft','correction']: raise HTTPException(403,'Uploads permitted only during draft/correction')
         definitions=rule_for(db,c.rule_version)
         if c.kind not in definitions or slot not in definitions[c.kind]['slots']: raise HTTPException(422,'Unknown checklist slot')
-        data=await file.read(2*1024*1024+1)
-        if not data or len(data)>2*1024*1024: raise HTTPException(422,'Upload must be between 1 byte and 2 MB')
-        if not ((file.content_type=='application/pdf' and data.startswith(b'%PDF-')) or (file.content_type=='text/plain' and b'\x00' not in data)):
-            raise HTTPException(422,'Demo accepts PDF or plain text evidence only')
+        data,content_type,name=await read_upload(file)
         if db.execute(update(Case).where(Case.id==cid,Case.version==version).values(version=version+1)).rowcount!=1: raise HTTPException(409,'Case changed; refresh')
         docs=list(db.scalars(select(Document).where(Document.case_id==cid,Document.slot==slot)))
-        name=re.sub(r'[^\w. -]','_',file.filename or 'evidence')[-120:]
-        d=Document(case_id=cid,slot=slot,filename=name,content=base64.b64encode(data).decode(),sha256=hashlib.sha256(data).hexdigest(),revision=len(docs)+1)
+        d=Document(case_id=cid,slot=slot,filename=name,content_type=content_type,size=len(data),content=base64.b64encode(data).decode(),sha256=hashlib.sha256(data).hexdigest(),revision=len(docs)+1)
         db.add(d); audit(db,c,u,'evidence_uploaded',f'{slot}; revision {d.revision}; sha256 {d.sha256}'); db.flush(); return serial(d)
     @app.get('/api/documents/{did}')
     def download(did:int,u=Depends(current),db=Depends(db_session)):
         d=db.get(Document,did)
         if not d: raise HTTPException(404)
         case_for(d.case_id,u,db)
-        return Response(base64.b64decode(d.content),media_type='application/octet-stream',headers={'Content-Disposition':f'attachment; filename="{d.filename}"'})
+        filename=re.sub(r'[^A-Za-z0-9._ -]','_',d.filename).strip(' .') or 'evidence'
+        return Response(base64.b64decode(d.content),media_type=d.content_type or 'application/octet-stream',headers={'Content-Disposition':f'attachment; filename="{filename}"'})
     @app.post('/api/applications/{cid}/submit')
     def submit(cid:str,body:Verify,u=Depends(current),db=Depends(db_session)):
         c=case_for(cid,u,db)
@@ -292,14 +300,11 @@ def create_app(url=None):
         if not o: raise HTTPException(404)
         c=case_for(o.case_id,u,db)
         if not has_membership(u,'institution',institution=c.institution): raise HTTPException(403,'Institution permission required')
-        data=await file.read(2*1024*1024+1)
-        if not data or len(data)>2*1024*1024: raise HTTPException(422,'Upload must be between 1 byte and 2 MB')
-        if not ((file.content_type=='application/pdf' and data.startswith(b'%PDF-')) or (file.content_type=='text/plain' and b'\x00' not in data)):
-            raise HTTPException(422,'Demo accepts PDF or plain text evidence only')
+        data,content_type,filename=await read_upload(file)
         if db.execute(update(Obligation).where(Obligation.id==oid,Obligation.version==version).values(status='pending',evidence='',proposed_expiry='',version=version+1)).rowcount!=1: raise HTTPException(409,'Obligation changed; refresh')
         slot=f'obligation:{oid}'
         prior=list(db.scalars(select(Document).where(Document.case_id==c.id,Document.slot==slot)))
-        doc=Document(case_id=c.id,slot=slot,filename=re.sub(r'[^\w. -]','_',file.filename or 'evidence')[-120:],content=base64.b64encode(data).decode(),sha256=hashlib.sha256(data).hexdigest(),revision=len(prior)+1)
+        doc=Document(case_id=c.id,slot=slot,filename=filename,content_type=content_type,size=len(data),content=base64.b64encode(data).decode(),sha256=hashlib.sha256(data).hexdigest(),revision=len(prior)+1)
         db.add(doc)
         audit(db,c,u,'compliance_file_uploaded',f'{o.title}; revision {doc.revision}; sha256 {doc.sha256}; submission still required')
         db.flush();return serial(doc)

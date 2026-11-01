@@ -79,6 +79,8 @@ class Document(Base):
     case_id: Mapped[str]=mapped_column(ForeignKey('applications.id'))
     slot: Mapped[str]
     filename: Mapped[str]
+    content_type: Mapped[str]
+    size: Mapped[int]
     content: Mapped[str]=mapped_column(Text)
     sha256: Mapped[str]
     revision: Mapped[int]

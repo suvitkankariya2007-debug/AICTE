@@ -1,4 +1,5 @@
 import io
+import re
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timedelta, timezone
 import pytest
@@ -21,9 +22,9 @@ def create(c,kind='eoa',key='test-request-001'):
 def detail(c,id): return c.get('/api/applications/'+id).json()
 def action(c,case,target,reason='Evidence reviewed; demo recommendation recorded'):
     return c.post('/api/applications/'+case['id']+'/transition',json={'target':target,'version':case['version'],'reason':reason})
-def upload(c,id,slot,data=b'Demo declaration',mime='text/plain'):
+def upload(c,id,slot,data=b'Demo declaration',mime='text/plain',filename='evidence.txt'):
     case=detail(c,id)
-    return c.post('/api/applications/'+id+'/documents',data={'slot':slot,'version':case['version']},files={'file':('evidence.txt',data,mime)})
+    return c.post('/api/applications/'+id+'/documents',data={'slot':slot,'version':case['version']},files={'file':(filename,data,mime)})
 
 def test_auth_and_scope(client):
     c=client
@@ -106,6 +107,21 @@ def test_checklists_and_idempotency(client):
     assert c.post('/api/applications/'+a['id']+'/submit',json={'version':1}).status_code==422
     assert upload(c,a['id'],'Unknown').status_code==422
     assert upload(c,a['id'],detail(c,a['id'])['slots'][0],b'bad','application/pdf').status_code==422
+
+def test_document_metadata_and_safe_download_name(client):
+    login(client,'college-west')
+    case=create(client,key='metadata-001')
+    uploaded=upload(client,case['id'],detail(client,case['id'])['slots'][0],b'plain evidence','text/plain','bad"name.txt')
+    assert uploaded.status_code==200
+    document=uploaded.json()
+    assert document['content_type']=='text/plain'
+    assert document['size']==len(b'plain evidence')
+    downloaded=client.get('/api/documents/'+str(document['id']))
+    assert downloaded.headers['content-type'].startswith('text/plain')
+    assert re.fullmatch(
+        r'attachment; filename="[A-Za-z0-9._ -]+"',
+        downloaded.headers['content-disposition'],
+    )
 
 def test_full_correction_and_decision(client):
     c=client; login(c,'college-west');a=create(c);id=a['id']

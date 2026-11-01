@@ -61,3 +61,11 @@ Validation note: dependencies were installed from the existing `backend/requirem
 - Added national oversight draft and publish endpoints with strict route/checklist validation.
 - Added migration `0004_rule_sets`, compatible with the existing schema bootstrap.
 - Added regression coverage for draft publication, future-proof effective-date selection, and application rule binding.
+
+## Module 3 — intake and document management
+
+- Document records now persist MIME type and byte size alongside hashes and revisions.
+- Application and compliance uploads share the same size, MIME, PDF signature, text-binary, and filename validation.
+- Download responses use the stored MIME type and a constrained safe filename.
+- Added migration `0005_document_metadata`, compatible with both fresh migrations and the legacy schema bootstrap.
+- Added regression coverage for metadata persistence and safe download headers.
