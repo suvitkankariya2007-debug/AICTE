@@ -6,7 +6,8 @@
   "scripts": {
     "dev": "vite --host 0.0.0.0",
     "build": "tsc --noEmit && vite build",
-    "test": "vitest run --environment jsdom"
+    "test": "vitest run src --environment jsdom",
+    "test:e2e": "playwright test"
   },
   "dependencies": {
     "lucide-react": "0.468.0",

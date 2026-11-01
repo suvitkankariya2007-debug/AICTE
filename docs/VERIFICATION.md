@@ -139,3 +139,10 @@ Validation note: dependencies were installed from the existing `backend/requirem
 - Configuration validation now accepts `postgresql+psycopg` and rejects unsupported database schemes.
 - Local migration, worker, backend, frontend, and production-build checks passed.
 - Docker and PostgreSQL runtime execution remains unverified because Docker is unavailable in the validation environment.
+
+## Module 13 — browser E2E and accessibility harness
+
+- Added Playwright configuration and a mocked-API browser smoke test covering login, dashboard reachability, primary navigation, keyboard activation, and the refresh control label.
+- Unit tests are scoped to `src` so Vitest does not execute Playwright files.
+- Frontend unit tests: **4 passed**; TypeScript/Vite build passed.
+- Playwright test discovery passed; execution is blocked because Chromium is not installed in the environment.

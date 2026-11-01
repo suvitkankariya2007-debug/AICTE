@@ -33,6 +33,8 @@ SQLite is the local default. Set `DATABASE_URL` before starting for PostgreSQL. 
 
 Optional frontend development: `npm run dev --prefix frontend` (port 5173); proxy points to backend port 8000. Start the backend separately using the command above.
 
+Frontend unit tests run with `npm test --prefix frontend`. Browser workflow tests run with `npm run test:e2e --prefix frontend`; from `frontend`, install the Playwright browser first with `npx playwright install chromium`.
+
 Run one deadline sweep, or keep the worker running:
 
 ```sh
