@@ -168,9 +168,9 @@ The catalogue upgrade now exposes twenty populated application categories from t
 
 The dashboard upgrade now gives institution, scrutiny officer, regional officer, and national oversight users distinct headings, guidance, primary actions, and metric labels. Unknown roles fall back safely; authorization remains server-enforced and unchanged.
 
-Architecture persona foundation adds stage coordinator, stage member, and national verification demo identities. Stage-member access is limited to active EVC participant assignments; coordinator and national verification access is read-only pending dedicated workflow actions.
+Architecture persona foundation adds stage coordinator, stage member, and national verification demo identities. Stage-member access is limited to active EVC participant assignments; coordinator access is read-only except for stage-member assignment, while national verification actions use a separate record.
 
-The stage and national verification foundation is tested at the API boundary: stage-member assignment isolation and read-only restrictions are enforced server-side, while dashboard differences are presentation-only until dedicated action models are added.
+The stage and national verification foundation is tested at the API boundary: stage-member assignment isolation and coordinator assignment are enforced server-side, while national verification uses a dedicated versioned record and audit trail.
 
 Stage workflow module adds same-region Stage Coordinator assignment through EVC participants and structured Stage Member findings (category, severity, description, recommendation) with active-assignment authorization. National Verification Officer remains read-only.
 

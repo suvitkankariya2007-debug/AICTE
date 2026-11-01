@@ -11,7 +11,7 @@ Latest user instruction: reuse properly where possible; defer substantial additi
 | 5 Submission | Track-grouped category selection, specific slots, draft, upload/download, completeness, resubmission | Full conditional questionnaire, bundling, official APH validation |
 | 6 Pre-scrutiny | Required presence, PDF signature/text MIME/size checks, hashes | Malware scan, OCR, identity/ratio/area/regulatory numerical checks, AI draft |
 | 7 Assignment/tasks | Regional reviewer assignment with workload counts, reason, revision check and scoped access | Automatic workload recommendation, expertise/conflicts, independent work-task lifecycle |
-| 8 Dashboards | Eight architecture personas represented with role-specific dashboard copy; scoped application access for stage members, stage coordinators, and national verification | Complaints/referrals, pagination, analytics charts, national verification actions |
+| 8 Dashboards | Eight architecture personas represented with role-specific dashboard copy; scoped application access for stage members, stage coordinators, and national verification | Complaints/referrals, pagination, analytics charts |
 | 9 Clarification | Reasoned correction loop, versioned files, audit | Per-finding approval/closure and multiple simultaneous clarification records |
 | 10 EVC/committees | Conditional EVC schedule/report gate | Expert appointment, availability/conflict/quorum, SHC/SAC/hearings |
 | 11 National verification | Separate versioned verification record with national-only actions and audit trail | Mandatory national-stage routing, official registry integration |
