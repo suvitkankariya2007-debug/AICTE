@@ -7,8 +7,8 @@ from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field, ConfigDict
 from sqlalchemy import select, update
 from sqlalchemy.exc import IntegrityError
-from .db import Base, User, RoleMembership, LoginSession, Case, Document, Obligation, Audit, Notice, setup
-from .rules import RULES, VERSION, SOURCE
+from .db import Base, User, RoleMembership, RuleSet, LoginSession, Case, Document, Obligation, Audit, Notice, setup
+from .rules import RULES, VERSION, SOURCE, validate_definitions
 from .engine import move, audit, sweep, utc
 from .config import load_settings
 
@@ -28,6 +28,11 @@ class Evidence(Strict): version:int; evidence:str=Field(min_length=5,max_length=
 class Assign(Strict): version:int; reviewer_id:str; reason:str=Field(min_length=5,max_length=2000)
 class Verify(Strict): version:int
 class Schedule(Strict): version:int; date:str; report:str=Field(default='',max_length=4000)
+class RuleDraft(Strict):
+    version:str=Field(min_length=1,max_length=80)
+    source:str=Field(min_length=5,max_length=4000)
+    effective_from:str
+    definitions:dict
 
 def create_app(url=None):
     settings=load_settings()
@@ -98,6 +103,16 @@ def create_app(url=None):
             and (region is None or m.region==region)
             and (institution is None or m.institution==institution)
         ),None)
+    def active_rules(db):
+        now=datetime.now(timezone.utc).isoformat()
+        return db.scalar(select(RuleSet).where(
+            RuleSet.status=='published',
+            RuleSet.effective_from<=now,
+        ).order_by(RuleSet.effective_from.desc()))
+    def rule_for(db,version):
+        rule_set=db.get(RuleSet,version)
+        if not rule_set: raise HTTPException(503,'Application rule version is unavailable')
+        return rule_set.definitions
     def permitted(c,u):
         return (
             has_membership(u,'national_admin')
@@ -145,7 +160,30 @@ def create_app(url=None):
             if membership.active
         ]
     @app.get('/api/rules')
-    def rules(u=Depends(current)): return {'version':VERSION,'source':SOURCE,'types':RULES}
+    def rules(u=Depends(current),db=Depends(db_session)):
+        rule_set=active_rules(db)
+        if not rule_set: raise HTTPException(503,'No published application rules are available')
+        return {'version':rule_set.version,'source':rule_set.source,'effective_from':rule_set.effective_from,'types':rule_set.definitions}
+    @app.post('/api/rules/drafts')
+    def draft_rule(body:RuleDraft,u=Depends(current),db=Depends(db_session)):
+        if not has_membership(u,'national_admin'): raise HTTPException(403,'National oversight permission required')
+        try: validate_definitions(body.definitions); utc(body.effective_from)
+        except ValueError as exc: raise HTTPException(422,str(exc))
+        if db.get(RuleSet,body.version): raise HTTPException(409,'Rule version already exists')
+        rule_set=RuleSet(version=body.version,status='draft',source=body.source,effective_from=utc(body.effective_from).isoformat(),definitions=body.definitions)
+        db.add(rule_set); db.flush()
+        return {'version':rule_set.version,'status':rule_set.status}
+    @app.post('/api/rules/{version}/publish')
+    def publish_rule(version:str,u=Depends(current),db=Depends(db_session)):
+        if not has_membership(u,'national_admin'): raise HTTPException(403,'National oversight permission required')
+        rule_set=db.get(RuleSet,version)
+        if not rule_set: raise HTTPException(404,'Rule version not found')
+        if rule_set.status!='draft': raise HTTPException(409,'Only draft rules can be published')
+        validate_definitions(rule_set.definitions)
+        db.query(RuleSet).filter(RuleSet.status=='published').update({'status':'retired'},synchronize_session=False)
+        rule_set.status='published'
+        db.flush()
+        return {'version':rule_set.version,'status':rule_set.status}
     @app.get('/api/applications')
     def cases(u=Depends(current),db=Depends(db_session)):
         return [serial(c) for c in db.scalars(select(Case).order_by(Case.entered.desc())) if permitted(c,u)]
@@ -153,23 +191,28 @@ def create_app(url=None):
     def create(body:Create,u=Depends(current),db=Depends(db_session)):
         scope=membership(u,'institution')
         if not scope: raise HTTPException(403,'Institution permission required')
-        if body.kind not in RULES: raise HTTPException(422,'Unknown application type')
+        rule_set=active_rules(db)
+        if not rule_set or body.kind not in rule_set.definitions: raise HTTPException(422,'Unknown application type')
+        definition=rule_set.definitions[body.kind]
         key=u.id+':'+body.idempotency_key
         prior=db.scalar(select(Case).where(Case.submit_key==key))
         if prior:
             if prior.kind!=body.kind: raise HTTPException(409,'Idempotency key belongs to another request')
             return serial(prior)
-        c=Case(id='APP-'+secrets.token_hex(4).upper(),institution=scope.institution,region=scope.region,kind=body.kind,state='draft',route=RULES[body.kind]['route'],rule_version=VERSION,owner='officer-west' if scope.region=='West Demo' else 'officer-east',due=(datetime.now(timezone.utc)+timedelta(days=7)).isoformat(),submit_key=key)
+        c=Case(id='APP-'+secrets.token_hex(4).upper(),institution=scope.institution,region=scope.region,kind=body.kind,state='draft',route=definition['route'],rule_version=rule_set.version,owner='officer-west' if scope.region=='West Demo' else 'officer-east',due=(datetime.now(timezone.utc)+timedelta(days=7)).isoformat(),submit_key=key)
         db.add(c); db.flush(); audit(db,c,u,'draft_created',SOURCE); return serial(c)
     @app.get('/api/applications/{cid}')
     def detail(cid:str,u=Depends(current),db=Depends(db_session)):
         c=case_for(cid,u,db)
-        return {**serial(c),'documents':[serial(d) for d in db.scalars(select(Document).where(Document.case_id==cid).order_by(Document.id))],'obligations':[serial(o) for o in db.scalars(select(Obligation).where(Obligation.case_id==cid))],'audit':[serial(a) for a in db.scalars(select(Audit).where(Audit.case_id==cid).order_by(Audit.id.desc()))],'slots':RULES[c.kind]['slots']}
+        definitions=rule_for(db,c.rule_version)
+        if c.kind not in definitions: raise HTTPException(503,'Application checklist is unavailable')
+        return {**serial(c),'documents':[serial(d) for d in db.scalars(select(Document).where(Document.case_id==cid).order_by(Document.id))],'obligations':[serial(o) for o in db.scalars(select(Obligation).where(Obligation.case_id==cid))],'audit':[serial(a) for a in db.scalars(select(Audit).where(Audit.case_id==cid).order_by(Audit.id.desc()))],'slots':definitions[c.kind]['slots']}
     @app.post('/api/applications/{cid}/documents')
     async def upload(cid:str,slot:str=Form(...),version:int=Form(...),file:UploadFile=File(...),u=Depends(current),db=Depends(db_session)):
         c=case_for(cid,u,db)
         if not has_membership(u,'institution',institution=c.institution) or c.state not in ['draft','correction']: raise HTTPException(403,'Uploads permitted only during draft/correction')
-        if slot not in RULES[c.kind]['slots']: raise HTTPException(422,'Unknown checklist slot')
+        definitions=rule_for(db,c.rule_version)
+        if c.kind not in definitions or slot not in definitions[c.kind]['slots']: raise HTTPException(422,'Unknown checklist slot')
         data=await file.read(2*1024*1024+1)
         if not data or len(data)>2*1024*1024: raise HTTPException(422,'Upload must be between 1 byte and 2 MB')
         if not ((file.content_type=='application/pdf' and data.startswith(b'%PDF-')) or (file.content_type=='text/plain' and b'\x00' not in data)):
@@ -189,8 +232,10 @@ def create_app(url=None):
     def submit(cid:str,body:Verify,u=Depends(current),db=Depends(db_session)):
         c=case_for(cid,u,db)
         if not has_membership(u,'institution',institution=c.institution) or c.state not in ['draft','correction']: raise HTTPException(403,'Not awaiting institutional submission')
+        definitions=rule_for(db,c.rule_version)
+        if c.kind not in definitions: raise HTTPException(503,'Application checklist is unavailable')
         slots={d.slot for d in db.scalars(select(Document).where(Document.case_id==cid))}
-        missing=set(RULES[c.kind]['slots'])-slots
+        missing=set(definitions[c.kind]['slots'])-slots
         if missing: raise HTTPException(422,'Missing required evidence: '+', '.join(sorted(missing)))
         if c.state=='draft':
             # Submission is a distinct event before the reusable route machine starts.
@@ -299,6 +344,8 @@ def create_app(url=None):
     return app
 
 def seed(db):
+    if not db.get(RuleSet,VERSION):
+        db.add(RuleSet(version=VERSION,status='published',source=SOURCE,effective_from='2026-01-01T00:00:00+00:00',definitions=RULES))
     if db.get(User,'college-west'):
         if not db.get(User,'officer-west-2'):
             db.add(User(id='officer-west-2',name='Dr. Kavya Rao',role='scrutiny_officer',region='West Demo',institution='',password=hash_password(DEMO_PASSWORD)))

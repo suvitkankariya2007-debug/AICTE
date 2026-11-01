@@ -32,6 +32,17 @@ class RoleMembership(Base):
     institution: Mapped[str]
     active: Mapped[bool]=mapped_column(default=True)
     user: Mapped[User]=relationship(back_populates='memberships')
+
+class RuleSet(Base):
+    __tablename__='rule_sets'
+    __table_args__=(
+        Index('ix_rule_sets_status_effective', 'status', 'effective_from'),
+    )
+    version: Mapped[str]=mapped_column(String,primary_key=True)
+    status: Mapped[str]
+    source: Mapped[str]
+    effective_from: Mapped[str]
+    definitions: Mapped[dict]=mapped_column(JSON)
 class LoginSession(Base):
     __tablename__='sessions'
     __table_args__=(Index('ix_sessions_expires', 'expires'),)

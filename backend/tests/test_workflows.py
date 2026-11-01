@@ -58,6 +58,32 @@ def test_inactive_membership_cannot_authorize_actions(client):
     assert client.get('/api/applications').status_code==200
     assert client.post('/api/applications',json={'kind':'eoa','idempotency_key':'inactive-001'}).status_code==403
 
+def test_rule_registry_draft_publish_and_binding(client):
+    login(client,'admin')
+    definitions={
+        'renewal_demo':{
+            'label':'Renewal demo',
+            'route':['scrutiny','decision'],
+            'slots':['Renewal declaration'],
+            'days':14,
+        }
+    }
+    draft=client.post('/api/rules/drafts',json={
+        'version':'DEMO-2026-v2',
+        'source':'Illustrative test rule; NEEDS_APH_VERIFICATION',
+        'effective_from':'2026-01-02T00:00:00Z',
+        'definitions':definitions,
+    })
+    assert draft.status_code==200
+    assert client.post('/api/rules/DEMO-2026-v2/publish').status_code==200
+    login(client,'college-west')
+    rules=client.get('/api/rules').json()
+    assert rules['version']=='DEMO-2026-v2'
+    case=create(client,'renewal_demo','rule-binding-001')
+    assert case['rule_version']=='DEMO-2026-v2'
+    assert case['route']==['scrutiny','decision']
+    assert detail(client,case['id'])['slots']==['Renewal declaration']
+
 def test_request_correlation_and_health(client):
     response=client.get('/api/health',headers={'X-Request-ID':'test-request-id'})
     assert response.status_code==200

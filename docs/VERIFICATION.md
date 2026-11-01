@@ -52,3 +52,12 @@ Validation note: dependencies were installed from the existing `backend/requirem
 - Added an idempotent role-membership migration compatible with the repository's initial schema bootstrap.
 - Backend regression suite: **17 passed**.
 - Frontend tests, typecheck, and production build remain required regression checks for the unchanged UI.
+
+## Module 2 — versioned rule registry
+
+- Added persistent rule sets with version, source, effective date, status, and checklist/route definitions.
+- Existing applications retain their stored route and rule version.
+- New applications bind to the latest published rule set whose effective date has started.
+- Added national oversight draft and publish endpoints with strict route/checklist validation.
+- Added migration `0004_rule_sets`, compatible with the existing schema bootstrap.
+- Added regression coverage for draft publication, future-proof effective-date selection, and application rule binding.

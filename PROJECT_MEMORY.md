@@ -141,3 +141,5 @@ Follow-up hardening resolved the frontend audit findings, bounded client-provide
 ## Module 1 update — identity and authorization foundation
 
 Added persisted active role memberships scoped by role, region, and institution, with `/api/me/roles`. Case and reviewer access now require matching active memberships, and secure-cookie configuration uses validated settings. Migration `0003` is compatible with the existing initial `create_all` bootstrap. Backend tests pass 17/17; frontend behavior remains unchanged.
+
+Module 2 adds persistent versioned rule sets with source/effective date/status, validated draft publishing for national oversight, and application binding to the latest effective published rules. Existing cases retain their stored route/version; unstarted future rules are not selected.
