@@ -24,3 +24,21 @@ Limits: managed preview failed because its mirrored environment could not access
 - Browser QA of the local static rehearsal: role login, regional dashboard, conditional tracker and reviewer reassignment succeeded; workload counts, revision and audit updated visibly. QA caught an insecure-HTTP randomUUID issue; identifiers now use getRandomValues. File hashing requires HTTPS (the hosted preview uses HTTPS). Browser upload/download E2E remains unverified; actual bytes/hash/version/isolation are exercised in backend and rehearsal unit tests.
 
 Deployment boundary: ChatGPT Site hosts an interactive browser-local rehearsal, not FastAPI. It uses IndexedDB for this browser and sessionStorage for the selected demo account. Role checks are simulations; server security, cross-device persistence and background tasks cannot be accepted from it. No Railway deployment. PostgreSQL/Docker and full browser E2E remain unverified. Manual acceptance boxes remain unchecked.
+
+## Module 0 — foundation hardening
+
+- Backend regression suite: **16 passed**.
+- Added validated environment settings for database URL, frontend origin, demo mode and secure cookies.
+- Added request correlation via `X-Request-ID`, response security headers and structured request access logs without logging credentials or file contents.
+- Added operational indexes for scoped application queues, documents, obligations, audit history, sessions and notifications.
+- Added an idempotent Alembic migration for the operational indexes.
+- Added regression coverage for request correlation and invalid database configuration.
+- Frontend Vitest/jsdom: **10 passed**; TypeScript typecheck and Vite production build passed.
+
+Validation note: dependencies were installed from the existing `backend/requirements.txt` and `frontend/package-lock.json`. The later follow-up hardening upgraded frontend development tooling and resolved the reported audit findings.
+
+## Follow-up hardening — 1 November 2026
+
+- Correlation IDs now accept only bounded alphanumeric IDs with `.`, `_`, `:` and `-`; invalid values are replaced with a generated ID before logging or response headers.
+- Production Docker startup now sets `AUTO_CREATE_SCHEMA=false` and uses the existing Alembic upgrade command. Local/test startup retains `AUTO_CREATE_SCHEMA=true` for the lightweight demo flow.
+- Frontend build tooling was upgraded to address the reported Vite, Vitest, and Tinypool advisories; tests and build were rerun after the upgrade.

@@ -1,4 +1,4 @@
-import os, secrets, hashlib, hmac, base64, re
+import logging, os, secrets, hashlib, hmac, base64, re, time, uuid
 from datetime import datetime, timedelta, timezone
 from contextlib import asynccontextmanager
 from fastapi import FastAPI, Depends, HTTPException, Response, Request, UploadFile, File, Form
@@ -10,8 +10,11 @@ from sqlalchemy.exc import IntegrityError
 from .db import Base, User, LoginSession, Case, Document, Obligation, Audit, Notice, setup
 from .rules import RULES, VERSION, SOURCE
 from .engine import move, audit, sweep, utc
+from .config import load_settings
 
 DEMO_PASSWORD='DemoPass!2026'
+logger = logging.getLogger('aicte.api')
+REQUEST_ID_PATTERN=re.compile(r'^[A-Za-z0-9._:-]{1,128}$')
 def hash_password(password,salt=None):
     salt=salt or secrets.token_hex(16)
     return salt+':'+hashlib.pbkdf2_hmac('sha256',password.encode(),salt.encode(),150000).hex()
@@ -27,28 +30,49 @@ class Verify(Strict): version:int
 class Schedule(Strict): version:int; date:str; report:str=Field(default='',max_length=4000)
 
 def create_app(url=None):
-    engine,Factory=setup(url)
+    settings=load_settings()
+    engine,Factory=setup(url or settings.database_url)
     @asynccontextmanager
     async def lifespan(app):
-        Base.metadata.create_all(engine)
+        if settings.auto_create_schema:
+            Base.metadata.create_all(engine)
         with Factory.begin() as db: seed(db)
         yield
         engine.dispose()
     app=FastAPI(title='AICTE Workflow · DEMO',lifespan=lifespan)
     app.state.factory=Factory
+    app.state.settings=settings
     @app.exception_handler(IntegrityError)
     async def conflict(request,exc):
         return JSONResponse(status_code=409,content={'detail':'Concurrent or duplicate write; refresh and retry with the same request key.'})
     @app.middleware('http')
     async def security(request,call_next):
+        supplied_request_id=request.headers.get('X-Request-ID','')
+        request_id=(
+            supplied_request_id
+            if REQUEST_ID_PATTERN.fullmatch(supplied_request_id)
+            else uuid.uuid4().hex
+        )
+        started=time.perf_counter()
         if request.method not in ['GET','HEAD','OPTIONS']:
             origin=request.headers.get('origin')
-            if origin and origin not in {str(request.base_url).rstrip('/'),os.getenv('FRONTEND_ORIGIN','http://localhost:5173')}:
-                return Response('Origin not permitted',status_code=403)
+            if origin and origin not in {str(request.base_url).rstrip('/'),settings.frontend_origin}:
+                response=Response('Origin not permitted',status_code=403)
+                response.headers['X-Request-ID']=request_id
+                return response
         response=await call_next(request)
         response.headers['X-Content-Type-Options']='nosniff'
         response.headers['X-Frame-Options']='DENY'
         response.headers['Cache-Control']='no-store'
+        response.headers['X-Request-ID']=request_id
+        logger.info(
+            'request_completed method=%s path=%s status=%s duration_ms=%.2f request_id=%s',
+            request.method,
+            request.url.path,
+            response.status_code,
+            (time.perf_counter()-started)*1000,
+            request_id,
+        )
         return response
     def db_session():
         with Factory() as db:
@@ -70,7 +94,7 @@ def create_app(url=None):
     def health(): return {'status':'ok','mode':'DEMO','rule_status':'NEEDS_APH_VERIFICATION'}
     @app.get('/api/demo-accounts')
     def accounts(db=Depends(db_session)):
-        if os.getenv('DEMO_MODE','true')!='true': raise HTTPException(404)
+        if not settings.demo_mode: raise HTTPException(404)
         return [serial(u) for u in db.scalars(select(User))]
     @app.post('/api/login')
     def login(body:Login,response:Response,db=Depends(db_session)):

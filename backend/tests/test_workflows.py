@@ -7,6 +7,7 @@ from app.main import create_app
 from app.db import Case, Audit, Obligation, Notice
 from app.engine import sweep
 from sqlalchemy import select
+from app.config import load_settings
 
 @pytest.fixture
 def client(tmp_path):
@@ -35,6 +36,20 @@ def test_auth_and_scope(client):
     assert c.post('/api/applications',json={'kind':'eoa','idempotency_key':'12345678','role':'admin'}).status_code==422
     assert c.post('/api/logout').status_code==200
     assert c.get('/api/me').status_code==401
+
+def test_request_correlation_and_health(client):
+    response=client.get('/api/health',headers={'X-Request-ID':'test-request-id'})
+    assert response.status_code==200
+    assert response.headers['X-Request-ID']=='test-request-id'
+    assert response.headers['Cache-Control']=='no-store'
+    invalid=client.get('/api/health',headers={'X-Request-ID':'bad\nrequest'})
+    assert invalid.status_code==200
+    assert invalid.headers['X-Request-ID']!='bad\nrequest'
+
+def test_settings_reject_invalid_values(monkeypatch):
+    monkeypatch.setenv('DATABASE_URL','mysql://localhost/aicte')
+    with pytest.raises(ValueError,match='DATABASE_URL'):
+        load_settings()
 
 def test_checklists_and_idempotency(client):
     c=client;login(c,'college-west')

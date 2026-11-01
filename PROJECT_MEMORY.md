@@ -131,3 +131,9 @@ Preview 2 uses the same React screens plus an explicitly separate IndexedDB rehe
 TEST_CHECKLIST.md contains numbered steps, expected results, actor/case details, architecture mappings, backend-only checks and unfilled user acceptance boxes. Explain changed test IDs before subsequent features; run relevant automated tests, update docs, push only test and republish this same Site. No keys required for this release.
 
 Remaining: full APH validation, workload recommendations/expertise/conflicts, committee/hearing/SAC/SHC engines, OCR, live integration providers and full hosting of the Python backend. No Railway work is authorised for this preview.
+
+## Module 0 update — 1 November 2026
+
+Foundation hardening is complete on `test`: validated environment settings, request correlation and structured access logging, operational database indexes with an idempotent migration, and regression tests for the new contracts. Backend tests pass 16/16; frontend tests pass 10/10; typecheck and production build pass. Existing npm audit findings remain outside this module's scope.
+
+Follow-up hardening resolved the frontend audit findings, bounded client-provided request IDs, and made Docker use migration-first startup with `AUTO_CREATE_SCHEMA=false`; local and test startup retain automatic schema creation.

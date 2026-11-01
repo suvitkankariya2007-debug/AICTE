@@ -1,6 +1,6 @@
 import os
 from datetime import datetime, timezone
-from sqlalchemy import create_engine, String, Integer, Text, JSON, ForeignKey, UniqueConstraint, event
+from sqlalchemy import create_engine, String, Integer, Text, JSON, ForeignKey, Index, event
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, sessionmaker
 
 def now():
@@ -17,11 +17,18 @@ class User(Base):
     password: Mapped[str]
 class LoginSession(Base):
     __tablename__='sessions'
+    __table_args__=(Index('ix_sessions_expires', 'expires'),)
     token: Mapped[str]=mapped_column(String,primary_key=True)
     user_id: Mapped[str]=mapped_column(ForeignKey('users.id'))
     expires: Mapped[str]
 class Case(Base):
     __tablename__='applications'
+    __table_args__=(
+        Index('ix_applications_region_state', 'region', 'state'),
+        Index('ix_applications_owner_state', 'owner', 'state'),
+        Index('ix_applications_due', 'due'),
+        Index('ix_applications_entered', 'entered'),
+    )
     id: Mapped[str]=mapped_column(String,primary_key=True)
     institution: Mapped[str]
     region: Mapped[str]
@@ -39,6 +46,7 @@ class Case(Base):
     submit_key: Mapped[str]=mapped_column(unique=True)
 class Document(Base):
     __tablename__='documents'
+    __table_args__=(Index('ix_documents_case_slot', 'case_id', 'slot'),)
     id: Mapped[int]=mapped_column(primary_key=True)
     case_id: Mapped[str]=mapped_column(ForeignKey('applications.id'))
     slot: Mapped[str]
@@ -49,6 +57,10 @@ class Document(Base):
     created: Mapped[str]=mapped_column(default=now)
 class Obligation(Base):
     __tablename__='obligations'
+    __table_args__=(
+        Index('ix_obligations_case_status', 'case_id', 'status'),
+        Index('ix_obligations_due', 'due'),
+    )
     id: Mapped[int]=mapped_column(primary_key=True)
     case_id: Mapped[str]=mapped_column(ForeignKey('applications.id'))
     kind: Mapped[str]
@@ -60,6 +72,7 @@ class Obligation(Base):
     version: Mapped[int]=mapped_column(default=1)
 class Audit(Base):
     __tablename__='audit_events'
+    __table_args__=(Index('ix_audit_case_created', 'case_id', 'created'),)
     id: Mapped[int]=mapped_column(primary_key=True)
     case_id: Mapped[str]=mapped_column(ForeignKey('applications.id'))
     actor: Mapped[str]
@@ -68,6 +81,7 @@ class Audit(Base):
     created: Mapped[str]=mapped_column(default=now)
 class Notice(Base):
     __tablename__='notifications'
+    __table_args__=(Index('ix_notifications_case_created', 'case_id', 'created'),)
     id: Mapped[int]=mapped_column(primary_key=True)
     case_id: Mapped[str]=mapped_column(ForeignKey('applications.id'))
     recipient: Mapped[str]

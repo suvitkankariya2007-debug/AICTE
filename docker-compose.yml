@@ -16,6 +16,7 @@ services:
     environment:
       DATABASE_URL: postgresql+psycopg://aicte:local-demo-only@db/aicte
       DEMO_MODE: "true"
+      AUTO_CREATE_SCHEMA: "false"
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/api/health')"]
       interval: 5s
