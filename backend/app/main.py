@@ -33,7 +33,11 @@ class ParticipantAction(Strict): version:int; status:str; reason:str=Field(defau
 class Verify(Strict): version:int
 class ComplianceReview(Strict): version:int; reason:str=Field(min_length=5,max_length=4000)
 class Schedule(Strict): version:int; date:str; report:str=Field(default='',max_length=4000)
-class FindingCreate(Strict): description:str=Field(min_length=5,max_length=4000)
+class FindingCreate(Strict):
+    category:str=Field(default='document_review',min_length=2,max_length=80)
+    severity:str=Field(default='medium',min_length=4,max_length=20)
+    description:str=Field(min_length=5,max_length=4000)
+    recommendation:str=Field(default='',max_length=4000)
 class FindingResponse(Strict): version:int; response:str=Field(min_length=5,max_length=4000)
 class FindingClose(Strict): version:int
 class RuleDraft(Strict):
@@ -321,10 +325,30 @@ def create_app(url=None):
     @app.post('/api/applications/{cid}/findings')
     def create_finding(cid:str,body:FindingCreate,u=Depends(current),db=Depends(db_session)):
         c=case_for(cid,u,db)
-        if not has_membership(u,'scrutiny_officer',region=c.region) or c.owner!=u.id: raise HTTPException(403,'Assigned scrutiny reviewer required')
-        if c.state not in ['scrutiny','correction']: raise HTTPException(409,'Findings are only recorded during scrutiny')
-        finding=Finding(case_id=cid,description=body.description.strip(),created_by=u.id)
-        db.add(finding); audit(db,c,u,'finding_created',body.description.strip()); db.flush()
+        assigned_stage_member=db.scalar(select(EvcParticipant).where(
+            EvcParticipant.case_id==cid,
+            EvcParticipant.member_id==u.id,
+            EvcParticipant.active==True,
+        ))
+        assigned_reviewer=has_membership(u,'scrutiny_officer',region=c.region) and c.owner==u.id
+        if not assigned_reviewer and not (assigned_stage_member and has_membership(u,'stage_member',region=c.region)):
+            raise HTTPException(403,'Assigned reviewer or stage member required')
+        if c.state not in ['scrutiny','correction','evc']: raise HTTPException(409,'Findings are only recorded during review')
+        if body.severity not in ['low','medium','high','critical']:
+            raise HTTPException(422,'Finding severity must be low, medium, high, or critical')
+        if len(body.description.strip())<5:
+            raise HTTPException(422,'Provide a meaningful finding description')
+        finding=Finding(
+            case_id=cid,
+            category=body.category.strip(),
+            severity=body.severity,
+            description=body.description.strip(),
+            recommendation=body.recommendation.strip(),
+            created_by=u.id,
+        )
+        db.add(finding)
+        audit(db,c,u,'finding_created',f'{body.category.strip()} / {body.severity}: {body.description.strip()}')
+        db.flush()
         return serial(finding)
     @app.post('/api/findings/{fid}/response')
     def respond_finding(fid:int,body:FindingResponse,u=Depends(current),db=Depends(db_session)):
@@ -358,13 +382,25 @@ def create_app(url=None):
     @app.get('/api/applications/{cid}/evc/participants')
     def evc_participants(cid:str,u=Depends(current),db=Depends(db_session)):
         c=case_for(cid,u,db)
-        if not (has_membership(u,'regional_officer',region=c.region) or u.id==c.owner or has_membership(u,'institution',institution=c.institution)):
+        if not (has_membership(u,'regional_officer',region=c.region) or has_membership(u,'stage_coordinator',region=c.region) or u.id==c.owner or has_membership(u,'institution',institution=c.institution)):
             raise HTTPException(403,'EVC participant permission required')
         return [serial(p) for p in db.scalars(select(EvcParticipant).where(EvcParticipant.case_id==cid).order_by(EvcParticipant.id))]
+    @app.get('/api/stage-members')
+    def stage_members(case_id:str,u=Depends(current),db=Depends(db_session)):
+        c=case_for(case_id,u,db)
+        if not (has_membership(u,'regional_officer',region=c.region) or has_membership(u,'stage_coordinator',region=c.region)):
+            raise HTTPException(403,'Stage coordinator permission required')
+        members=db.scalars(select(User).join(RoleMembership).where(
+            RoleMembership.role=='stage_member',
+            RoleMembership.region==c.region,
+            RoleMembership.active==True,
+        )).all()
+        return [serial(member) for member in members]
     @app.post('/api/applications/{cid}/evc/participants')
     def add_evc_participant(cid:str,body:ParticipantAdd,u=Depends(current),db=Depends(db_session)):
         c=case_for(cid,u,db)
-        if not has_membership(u,'regional_officer',region=c.region): raise HTTPException(403,'Regional coordinator required')
+        if not (has_membership(u,'regional_officer',region=c.region) or has_membership(u,'stage_coordinator',region=c.region)):
+            raise HTTPException(403,'Regional or stage coordinator required')
         member=db.get(User,body.member_id)
         if not member or not has_membership(member,'stage_member',region=c.region): raise HTTPException(422,'Choose an eligible EVC stage member')
         if db.scalar(select(EvcParticipant).where(EvcParticipant.case_id==cid,EvcParticipant.member_id==member.id,EvcParticipant.active==True)):

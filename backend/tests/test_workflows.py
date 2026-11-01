@@ -5,7 +5,7 @@ from datetime import datetime, timedelta, timezone
 import pytest
 from fastapi.testclient import TestClient
 from app.main import create_app
-from app.db import Case, Audit, Obligation, Notice, RoleMembership, WorkerHeartbeat
+from app.db import Case, Audit, EvcParticipant, Obligation, Notice, RoleMembership, WorkerHeartbeat
 from app.engine import sweep
 from sqlalchemy import select
 from app.config import load_settings
@@ -45,6 +45,29 @@ def test_architecture_personas_have_conservative_read_scopes(client):
     login(client,'stage-coordinator-west')
     assert client.get('/api/applications').status_code==200
     assert client.post('/api/applications/APP-DEMO-0402/transition',json={'target':'decision','version':1,'reason':'not permitted'}).status_code==403
+
+def test_stage_coordinator_assigns_and_stage_member_records_structured_finding(client):
+    login(client,'stage-coordinator-west')
+    members=client.get('/api/stage-members',params={'case_id':'APP-DEMO-0402'})
+    assert members.status_code==200
+    assert any(x['id']=='evc-west-1' for x in members.json())
+    existing=client.get('/api/applications/APP-DEMO-0402/evc/participants').json()
+    assert existing[0]['member_id']=='evc-west-1'
+    with client.app.state.factory.begin() as db:
+        db.get(EvcParticipant,existing[0]['id']).active=False
+    assigned=client.post('/api/applications/APP-DEMO-0402/evc/participants',json={'member_id':'evc-west-1'})
+    assert assigned.status_code==200
+    login(client,'evc-west-1')
+    finding=client.post('/api/applications/APP-DEMO-0402/findings',json={
+        'category':'academic_compliance',
+        'severity':'high',
+        'description':'Faculty workload evidence needs reconciliation',
+        'recommendation':'Request the signed workload statement before recommendation.',
+    })
+    assert finding.status_code==200
+    assert finding.json()['severity']=='high'
+    assert finding.json()['category']=='academic_compliance'
+    assert client.post('/api/applications/APP-EAST-0100/findings',json={'description':'Out of scope finding'}).status_code==404
     login(client,'evc-west-1')
     assert [c['id'] for c in client.get('/api/applications').json()]==['APP-DEMO-0402']
     login(client,'national-verification')

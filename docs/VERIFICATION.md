@@ -153,6 +153,13 @@ Validation note: dependencies were installed from the existing `backend/requirem
 - Added four labelled evaluation tracks and category-specific evidence checklists.
 - Grouped application selection in the frontend by evaluation track with explanatory APH-verification messaging.
 - Preserved legacy `new_course` and EoA evidence-slot compatibility for existing seeded workflows.
+
+## Stage assignment and structured findings
+
+- Added migration `0014_structured_findings` with category, severity, and recommendation fields.
+- Stage Coordinators can assign eligible same-region Stage Members through the existing EVC participant model.
+- Stage Members can submit structured findings only for active participant assignments; they cannot transition applications.
+- Backend regression suite: **29 passed**; frontend tests: **4 passed**; TypeScript/Vite build passed.
 - Backend regression suite: **27 passed**; frontend tests: **4 passed**; TypeScript/Vite build passed.
 
 ## Role-specific dashboard upgrade
