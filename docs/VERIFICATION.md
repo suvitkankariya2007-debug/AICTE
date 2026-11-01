@@ -154,3 +154,10 @@ Validation note: dependencies were installed from the existing `backend/requirem
 - Grouped application selection in the frontend by evaluation track with explanatory APH-verification messaging.
 - Preserved legacy `new_course` and EoA evidence-slot compatibility for existing seeded workflows.
 - Backend regression suite: **27 passed**; frontend tests: **4 passed**; TypeScript/Vite build passed.
+
+## Role-specific dashboard upgrade
+
+- Added distinct dashboard titles, guidance, primary actions, and metric labels for institution, scrutiny officer, regional officer, and national oversight workspaces.
+- Unknown or future roles receive a safe generic dashboard fallback.
+- Existing authorization and case-scope rules remain unchanged.
+- Backend regression suite: **27 passed**; frontend tests: **4 passed**; TypeScript/Vite build passed.
