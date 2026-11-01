@@ -169,6 +169,26 @@ def test_evc_gates(client):
     assert c.post('/api/applications/'+a['id']+'/evc',json={'version':a['version'],'date':'2026-12-01T10:00:00Z','report':'Report recorded'}).status_code==200
     assert action(c,detail(c,a['id']),'decision').status_code==200
 
+def test_evc_participant_conflict_and_quorum(client):
+    login(client,'regional-west')
+    participants=client.get('/api/applications/APP-DEMO-0402/evc/participants').json()
+    assert {p['member_id'] for p in participants}=={'evc-west-1','evc-west-2'}
+    login(client,'evc-west-1')
+    participant=participants[0]
+    conflict=client.post(f"/api/evc-participants/{participant['id']}/conflict",json={
+        'status':'declared','reason':'Existing relationship with applicant'
+    })
+    assert conflict.status_code==200
+    assert conflict.json()['status']=='declined'
+    login(client,'regional-west')
+    case=detail(client,'APP-DEMO-0402')
+    assert action(client,case,'evc').status_code==200
+    case=detail(client,'APP-DEMO-0402')
+    assert client.post(f"/api/applications/{case['id']}/evc",json={
+        'version':case['version'],'date':'2026-12-01T10:00:00Z','report':'Report recorded'
+    }).status_code==200
+    assert action(client,detail(client,case['id']),'decision').status_code==422
+
 def test_obligation_verification_and_expiry(client):
     c=client;login(c,'regional-west');obs=c.get('/api/obligations').json();doc=next(o for o in obs if o['kind']=='document')
     assert c.post(f"/api/obligations/{doc['id']}/verify",json={'version':doc['version']}).status_code==409

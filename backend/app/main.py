@@ -8,7 +8,7 @@ from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field, ConfigDict
 from sqlalchemy import select, update
 from sqlalchemy.exc import IntegrityError
-from .db import Base, User, RoleMembership, RuleSet, LoginSession, Case, Assignment, Document, Finding, Obligation, Audit, Notice, setup
+from .db import Base, User, RoleMembership, RuleSet, LoginSession, Case, Assignment, EvcParticipant, Document, Finding, Obligation, Audit, Notice, setup
 from .rules import RULES, VERSION, SOURCE, validate_definitions
 from .engine import move, audit, sweep, utc
 from .config import load_settings
@@ -28,6 +28,8 @@ class Action(Strict): target:str; version:int; reason:str=Field(default='',max_l
 class Evidence(Strict): version:int; evidence:str=Field(min_length=5,max_length=4000); expiry:str=''
 class Assign(Strict): version:int; reviewer_id:str; reason:str=Field(min_length=5,max_length=2000)
 class Conflict(Strict): status:str; reason:str=Field(default='',max_length=2000)
+class ParticipantAdd(Strict): member_id:str
+class ParticipantAction(Strict): version:int; status:str; reason:str=Field(default='',max_length=2000)
 class Verify(Strict): version:int
 class Schedule(Strict): version:int; date:str; report:str=Field(default='',max_length=4000)
 class FindingCreate(Strict): description:str=Field(min_length=5,max_length=4000)
@@ -262,7 +264,11 @@ def create_app(url=None):
         c=case_for(cid,u,db); reviewer(c,u)
         if body.target in ['approved','rejected'] and not has_membership(u,'regional_officer',region=c.region): raise HTTPException(403,'Demo decision authority required')
         if not body.reason.strip(): raise HTTPException(422,'Record review findings / reasons')
-        if c.state=='evc' and body.target=='decision' and (not c.schedule or not c.report.strip()): raise HTTPException(422,'EVC schedule and report required')
+        if c.state=='evc' and body.target=='decision':
+            if not c.schedule or not c.report.strip(): raise HTTPException(422,'EVC schedule and report required')
+            participants=list(db.scalars(select(EvcParticipant).where(EvcParticipant.case_id==cid,EvcParticipant.active==True)))
+            accepted=[p for p in participants if p.status=='accepted' and p.conflict_status!='declared']
+            if len(accepted)<2: raise HTTPException(422,'EVC quorum requires two accepted, conflict-free members')
         return serial(move(db,c,u,body.target,body.version,body.reason))
     @app.post('/api/applications/{cid}/findings')
     def create_finding(cid:str,body:FindingCreate,u=Depends(current),db=Depends(db_session)):
@@ -301,6 +307,47 @@ def create_app(url=None):
         audit(db,c,u,'evc_updated',f'Schedule {date}; report: {body.report}')
         db.add(Notice(case_id=cid,recipient='institution',message=f'EVC schedule updated: {date}',level='info',dedup=f'evc:{cid}:{body.version}'))
         return {'ok':True}
+    @app.get('/api/applications/{cid}/evc/participants')
+    def evc_participants(cid:str,u=Depends(current),db=Depends(db_session)):
+        c=case_for(cid,u,db)
+        if not (has_membership(u,'regional_officer',region=c.region) or u.id==c.owner or has_membership(u,'institution',institution=c.institution)):
+            raise HTTPException(403,'EVC participant permission required')
+        return [serial(p) for p in db.scalars(select(EvcParticipant).where(EvcParticipant.case_id==cid).order_by(EvcParticipant.id))]
+    @app.post('/api/applications/{cid}/evc/participants')
+    def add_evc_participant(cid:str,body:ParticipantAdd,u=Depends(current),db=Depends(db_session)):
+        c=case_for(cid,u,db)
+        if not has_membership(u,'regional_officer',region=c.region): raise HTTPException(403,'Regional coordinator required')
+        member=db.get(User,body.member_id)
+        if not member or not has_membership(member,'stage_member',region=c.region): raise HTTPException(422,'Choose an eligible EVC stage member')
+        if db.scalar(select(EvcParticipant).where(EvcParticipant.case_id==cid,EvcParticipant.member_id==member.id,EvcParticipant.active==True)):
+            raise HTTPException(409,'EVC member is already assigned')
+        participant=EvcParticipant(case_id=cid,member_id=member.id,assigned_by=u.id)
+        db.add(participant); audit(db,c,u,'evc_member_assigned',f'{member.id} assigned to EVC'); db.flush()
+        return serial(participant)
+    @app.post('/api/evc-participants/{pid}/respond')
+    def respond_evc_participant(pid:int,body:ParticipantAction,u=Depends(current),db=Depends(db_session)):
+        participant=db.get(EvcParticipant,pid)
+        if not participant: raise HTTPException(404,'EVC participant not found')
+        c=db.get(Case,participant.case_id)
+        if not c: raise HTTPException(404,'Application not found')
+        if participant.member_id!=u.id or not has_membership(u,'stage_member',region=c.region): raise HTTPException(403,'Assigned EVC member required')
+        if body.status not in ['accepted','declined']: raise HTTPException(422,'Participant status must be accepted or declined')
+        if participant.conflict_status=='declared': raise HTTPException(409,'Conflicted member cannot accept an EVC assignment')
+        if db.execute(update(EvcParticipant).where(EvcParticipant.id==pid,EvcParticipant.version==body.version,EvcParticipant.active==True).values(status=body.status,version=body.version+1)).rowcount!=1: raise HTTPException(409,'Participant assignment changed; refresh')
+        audit(db,c,u,'evc_member_response',f'{body.status}: {body.reason.strip()}'); db.flush(); db.refresh(participant)
+        return serial(participant)
+    @app.post('/api/evc-participants/{pid}/conflict')
+    def evc_conflict(pid:int,body:Conflict,u=Depends(current),db=Depends(db_session)):
+        participant=db.get(EvcParticipant,pid)
+        if not participant: raise HTTPException(404,'EVC participant not found')
+        c=db.get(Case,participant.case_id)
+        if not c: raise HTTPException(404,'Application not found')
+        if participant.member_id!=u.id or not has_membership(u,'stage_member',region=c.region): raise HTTPException(403,'Assigned EVC member required')
+        if body.status not in ['declared','cleared']: raise HTTPException(422,'Conflict status must be declared or cleared')
+        if body.status=='declared' and len(body.reason.strip())<5: raise HTTPException(422,'Provide a conflict reason')
+        if db.execute(update(EvcParticipant).where(EvcParticipant.id==pid,EvcParticipant.version==participant.version).values(conflict_status=body.status,conflict_reason=body.reason.strip(),status='declined' if body.status=='declared' else participant.status,version=participant.version+1)).rowcount!=1: raise HTTPException(409,'Participant assignment changed; refresh')
+        audit(db,c,u,'evc_conflict_updated',f'{body.status}: {body.reason.strip()}'); db.flush(); db.refresh(participant)
+        return serial(participant)
     @app.get('/api/reviewers')
     def reviewers(case_id:str,u=Depends(current),db=Depends(db_session)):
         c=case_for(case_id,u,db)
@@ -423,6 +470,8 @@ def seed(db):
         ('officer-west-2','Dr. Kavya Rao','scrutiny_officer','West Demo',''),
         ('officer-east','Dr. Arun Sen','scrutiny_officer','East Demo',''),
         ('regional-west','Priya Shah','regional_officer','West Demo',''),
+        ('evc-west-1','EVC Member One','stage_member','West Demo',''),
+        ('evc-west-2','EVC Member Two','stage_member','West Demo',''),
         ('admin','National oversight','national_admin','','')]:
         db.add(User(id=id,name=name,role=role,region=region,institution=inst,password=hash_password(DEMO_PASSWORD)))
         db.add(RoleMembership(user_id=id,role=role,region=region,institution=inst))
@@ -431,6 +480,11 @@ def seed(db):
         c=Case(id=id,institution='Pune Demo Institute',region='West Demo',kind=kind,state=state,route=RULES[kind]['route'],rule_version=VERSION,owner='officer-west',entered=(stamp-timedelta(days=8)).isoformat(),due=(stamp+timedelta(days=offset)).isoformat(),submit_key='seed:'+id)
         db.add(c); db.flush()
         db.add(Assignment(case_id=id,reviewer_id='officer-west',assigned_by='system',reason='Synthetic initial assignment'))
+        if id=='APP-DEMO-0402':
+            db.add_all([
+                EvcParticipant(case_id=id,member_id='evc-west-1',assigned_by='system',status='accepted'),
+                EvcParticipant(case_id=id,member_id='evc-west-2',assigned_by='system',status='accepted'),
+            ])
         db.add(Audit(case_id=id,actor='system',action='synthetic_seed',detail='Fictional demonstration record; unverified APH mapping'))
     c=Case(id='APP-EAST-0100',institution='Eastern Demo Institute',region='East Demo',kind='eoa',state='scrutiny',route=RULES['eoa']['route'],rule_version=VERSION,owner='officer-east',due=(stamp+timedelta(days=2)).isoformat(),submit_key='seed:east')
     db.add(c); db.flush()

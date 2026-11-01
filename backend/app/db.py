@@ -88,6 +88,22 @@ class Assignment(Base):
     conflict_reason: Mapped[str]=mapped_column(Text,default='')
     created: Mapped[str]=mapped_column(default=now)
     ended: Mapped[str]=mapped_column(default='')
+class EvcParticipant(Base):
+    __tablename__='evc_participants'
+    __table_args__=(
+        Index('ix_evc_participants_case_status', 'case_id', 'status'),
+        Index('ix_evc_participants_member_active', 'member_id', 'active'),
+    )
+    id: Mapped[int]=mapped_column(primary_key=True)
+    case_id: Mapped[str]=mapped_column(ForeignKey('applications.id'))
+    member_id: Mapped[str]=mapped_column(ForeignKey('users.id'))
+    assigned_by: Mapped[str]
+    status: Mapped[str]=mapped_column(default='assigned')
+    conflict_status: Mapped[str]=mapped_column(default='not_declared')
+    conflict_reason: Mapped[str]=mapped_column(Text,default='')
+    version: Mapped[int]=mapped_column(default=1)
+    active: Mapped[bool]=mapped_column(default=True)
+    created: Mapped[str]=mapped_column(default=now)
 class Document(Base):
     __tablename__='documents'
     __table_args__=(Index('ix_documents_case_slot', 'case_id', 'slot'),)

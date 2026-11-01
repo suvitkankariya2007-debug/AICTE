@@ -89,3 +89,13 @@ Validation note: dependencies were installed from the existing `backend/requirem
 - Existing applications are backfilled into assignment history during migration `0007_assignments`.
 - Added regression coverage for reassignment history, conflict blocking, closed/stale handling, and scoped access.
 - Backend regression suite: **22 passed**.
+
+## Module 6 — EVC participant and quorum foundation
+
+- Added persisted EVC participant assignments with acceptance, decline, conflict, active state, and optimistic versions.
+- Added coordinator assignment of eligible regional stage members.
+- Added participant-specific acceptance/decline and conflict APIs.
+- Decision advancement from EVC now requires schedule, report, and two accepted conflict-free members.
+- Seeded the existing West EVC demo with two accepted synthetic members.
+- Added migration `0008_evc_participants`.
+- Backend regression suite: **23 passed**; frontend tests, typecheck, and build remain passing.
