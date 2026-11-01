@@ -159,3 +159,5 @@ Module 8 adds notification delivery lifecycle metadata and national-oversight re
 Module 10 adds a reviewable document extraction foundation. Plain text is extracted deterministically; PDFs remain failed with an explicit OCR-not-configured error. Extracted content is never treated as authoritative until an authorized reviewer accepts it.
 
 Module 11 adds database-backed readiness and a persistent deadline-worker heartbeat. Worker iteration failures are logged and exposed through heartbeat state; Docker/PostgreSQL runtime remains unverified locally.
+
+Module 12 corrected the Docker Compose PostgreSQL URL to the installed psycopg driver format and validated it through configuration tests. Docker/PostgreSQL runtime remains unverified because Docker is unavailable locally.

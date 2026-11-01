@@ -12,11 +12,11 @@ def _required_bool(value: str, name: str) -> bool:
 
 def _validate_database_url(value: str) -> str:
     parsed = urlparse(value)
-    if parsed.scheme not in {"sqlite", "postgresql", "postgres"}:
+    if parsed.scheme not in {"sqlite", "postgresql", "postgres", "postgresql+psycopg"}:
         raise ValueError("DATABASE_URL must use sqlite or postgresql")
     if parsed.scheme == "sqlite" and not parsed.path:
         raise ValueError("DATABASE_URL must include a SQLite database path")
-    if parsed.scheme in {"postgresql", "postgres"} and not parsed.hostname:
+    if parsed.scheme in {"postgresql", "postgres", "postgresql+psycopg"} and not parsed.hostname:
         raise ValueError("DATABASE_URL must include a PostgreSQL host")
     return value
 

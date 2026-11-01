@@ -14,7 +14,7 @@ services:
     build: .
     ports: ["127.0.0.1:8000:8000"]
     environment:
-      DATABASE_URL: postgresql+psycopg://aicte:local-demo-only@db/aicte
+      DATABASE_URL: postgresql+psycopg://aicte:local-demo-only@db:5432/aicte
       DEMO_MODE: "true"
       AUTO_CREATE_SCHEMA: "false"
     healthcheck:
@@ -29,7 +29,7 @@ services:
     build: .
     command: ["python", "-m", "app.worker"]
     environment:
-      DATABASE_URL: postgresql+psycopg://aicte:local-demo-only@db/aicte
+      DATABASE_URL: postgresql+psycopg://aicte:local-demo-only@db:5432/aicte
     depends_on:
       app:
         condition: service_healthy

@@ -132,3 +132,10 @@ Validation note: dependencies were installed from the existing `backend/requirem
 - Worker failures are logged and surfaced without silently converting failed iterations into successful health state.
 - Added migration `0013_worker_heartbeat` and readiness regression coverage.
 - Docker app healthcheck now includes a startup grace period; PostgreSQL/Docker execution remains unverified locally.
+
+## Module 12 — deployment contract verification
+
+- Corrected Docker Compose to use the psycopg PostgreSQL URL supported by `backend/requirements.txt`.
+- Configuration validation now accepts `postgresql+psycopg` and rejects unsupported database schemes.
+- Local migration, worker, backend, frontend, and production-build checks passed.
+- Docker and PostgreSQL runtime execution remains unverified because Docker is unavailable in the validation environment.

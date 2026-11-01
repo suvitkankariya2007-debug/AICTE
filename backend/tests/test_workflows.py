@@ -102,6 +102,8 @@ def test_settings_reject_invalid_values(monkeypatch):
     monkeypatch.setenv('DATABASE_URL','mysql://localhost/aicte')
     with pytest.raises(ValueError,match='DATABASE_URL'):
         load_settings()
+    monkeypatch.setenv('DATABASE_URL','postgresql+psycopg://aicte:local-demo-only@db:5432/aicte')
+    assert load_settings().database_url.startswith('postgresql+psycopg://')
 
 def test_checklists_and_idempotency(client):
     c=client;login(c,'college-west')
