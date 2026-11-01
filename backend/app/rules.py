@@ -21,7 +21,7 @@ RULES={
  'university_conversion':{'label':'Conversion into a deemed-to-be university or university','track':'T4 · Structural and administrative reorganisation','route':['scrutiny','decision'],'slots':['Government Gazette or UGC declaration','University NOC','Affidavits 2 and 5','Technical programme transition plan'],'days':7},
  'online_odl':{'label':'Online learning or open and distance learning courses','track':'T2 · Academic and programme modifications','route':['scrutiny','decision'],'slots':['Accreditation or ranking certificate','Distance education infrastructure proof','LMS details','Affidavits 2 and 5'],'days':7},
 }
-VERSION='DEMO-2026-v1'
+VERSION='DEMO-2026-v3'
 SOURCE='Illustrative prototype rules · NEEDS_APH_VERIFICATION'
 
 def validate_definitions(definitions):

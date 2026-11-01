@@ -182,4 +182,6 @@ Status ledger is maintained in `docs/STATUS.md`. Queue APIs preserve their origi
 
 The frontend now requests paginated application and complaint queues and renders accessible previous/next controls while retaining compatibility with legacy list-shaped API responses.
 
+The persisted local rule registry was upgraded to `DEMO-2026-v3` via migration `0017_application_catalogue_v3`; old cases remain bound to prior versions, while new intake receives all 20 catalogue types. The frontend type selector is a flat complete list with track text shown in each option.
+
 Playwright Chromium is installed in the local environment and the browser smoke/accessibility test passes against the current unified login portal and navigation.

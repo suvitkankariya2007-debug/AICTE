@@ -7,6 +7,8 @@ Updated: 1 November 2026
 - FastAPI, SQLAlchemy, React/Vite, SQLite demo runtime, and migration chain through `0016`.
 - Unified position-based login with server-enforced role, region, and institution scope.
 - Twenty illustrative application categories across four evaluation tracks.
+- Published catalogue release `DEMO-2026-v3` upgrades existing deployments without rewriting older case-bound rules.
+- Intake selector displays all 20 application types in one selectable list with track metadata.
 - Versioned rules, evidence checklists, uploads, downloads, hashes, revisions, and audit history.
 - Scrutiny findings, clarification/resubmission, reviewer assignment, conflict declaration, and EVC quorum gates.
 - Compliance obligations, replacement evidence, expiry checks, deadline sweep, simulated notifications, retries, and worker readiness.

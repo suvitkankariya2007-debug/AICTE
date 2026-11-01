@@ -183,6 +183,13 @@ Validation note: dependencies were installed from the existing `backend/requirem
 - Backend regression suite: **32 passed**; frontend tests: **4 passed**; TypeScript/Vite build passed.
 - Frontend queues now consume paginated application and complaint responses; frontend tests: **4 passed**; TypeScript/Vite build passed.
 
+## Application catalogue persistence fix
+
+- Published catalogue release `DEMO-2026-v3` through migration `0017_application_catalogue_v3`.
+- Existing applications retain their original bound rule version; new applications use the complete 20-type catalogue.
+- The live API was verified with 20 application types, each carrying its track metadata.
+- The intake selector now displays every application type in one selectable list instead of hiding entries inside track-only groups.
+
 ## Browser runtime verification
 
 - Installed the pinned Playwright Chromium runtime.
