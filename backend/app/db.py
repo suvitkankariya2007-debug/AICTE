@@ -147,6 +147,10 @@ class Obligation(Base):
     evidence: Mapped[str]=mapped_column(Text,default='')
     proposed_expiry: Mapped[str]=mapped_column(default='')
     version: Mapped[int]=mapped_column(default=1)
+    review_note: Mapped[str]=mapped_column(Text,default='')
+    verified_by: Mapped[str]=mapped_column(default='')
+    verified_at: Mapped[str]=mapped_column(default='')
+    requires_replacement: Mapped[bool]=mapped_column(default=False)
 class Audit(Base):
     __tablename__='audit_events'
     __table_args__=(Index('ix_audit_case_created', 'case_id', 'created'),)

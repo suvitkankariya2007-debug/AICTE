@@ -31,6 +31,7 @@ class Conflict(Strict): status:str; reason:str=Field(default='',max_length=2000)
 class ParticipantAdd(Strict): member_id:str
 class ParticipantAction(Strict): version:int; status:str; reason:str=Field(default='',max_length=2000)
 class Verify(Strict): version:int
+class ComplianceReview(Strict): version:int; reason:str=Field(min_length=5,max_length=4000)
 class Schedule(Strict): version:int; date:str; report:str=Field(default='',max_length=4000)
 class FindingCreate(Strict): description:str=Field(min_length=5,max_length=4000)
 class FindingResponse(Strict): version:int; response:str=Field(min_length=5,max_length=4000)
@@ -404,7 +405,7 @@ def create_app(url=None):
         c=case_for(o.case_id,u,db)
         if not has_membership(u,'institution',institution=c.institution): raise HTTPException(403,'Institution permission required')
         data,content_type,filename=await read_upload(file)
-        if db.execute(update(Obligation).where(Obligation.id==oid,Obligation.version==version).values(status='pending',evidence='',proposed_expiry='',version=version+1)).rowcount!=1: raise HTTPException(409,'Obligation changed; refresh')
+        if db.execute(update(Obligation).where(Obligation.id==oid,Obligation.version==version).values(status='pending',evidence='',proposed_expiry='',review_note='',verified_by='',verified_at='',requires_replacement=False,version=version+1)).rowcount!=1: raise HTTPException(409,'Obligation changed; refresh')
         slot=f'obligation:{oid}'
         prior=list(db.scalars(select(Document).where(Document.case_id==c.id,Document.slot==slot)))
         doc=Document(case_id=c.id,slot=slot,filename=filename,content_type=content_type,size=len(data),content=base64.b64encode(data).decode(),sha256=hashlib.sha256(data).hexdigest(),revision=len(prior)+1)
@@ -422,10 +423,12 @@ def create_app(url=None):
         c=case_for(o.case_id,u,db)
         if not has_membership(u,'institution',institution=c.institution): raise HTTPException(403,'Institution permission required')
         if len(body.evidence.strip())<5: raise HTTPException(422,'Provide a meaningful evidence description')
+        if o.requires_replacement: raise HTTPException(422,'Upload replacement evidence before resubmitting')
         if not db.scalar(select(Document).where(Document.case_id==c.id,Document.slot==f'obligation:{oid}')): raise HTTPException(422,'Upload the supporting evidence file before submitting')
         expiry=utc(body.expiry).isoformat() if o.kind=='document' else ''
         if expiry and utc(expiry)<=datetime.now(timezone.utc): raise HTTPException(422,'Renewal expiry must be in the future')
-        if db.execute(update(Obligation).where(Obligation.id==oid,Obligation.version==body.version).values(evidence=body.evidence,proposed_expiry=expiry,status='submitted',version=body.version+1)).rowcount!=1: raise HTTPException(409,'Obligation changed')
+        if o.status not in ['pending','clarification','rejected']: raise HTTPException(409,'Obligation is not awaiting institutional evidence')
+        if db.execute(update(Obligation).where(Obligation.id==oid,Obligation.version==body.version).values(evidence=body.evidence,proposed_expiry=expiry,status='submitted',review_note='',version=body.version+1)).rowcount!=1: raise HTTPException(409,'Obligation changed')
         audit(db,c,u,'compliance_submitted',f'{o.title}: {body.evidence}; proposed expiry {expiry}; awaiting official verification'); return {'ok':True}
     @app.post('/api/obligations/{oid}/verify')
     def verify(oid:int,body:Verify,u=Depends(current),db=Depends(db_session)):
@@ -437,7 +440,21 @@ def create_app(url=None):
         values={'status':'verified','version':body.version+1}
         if o.kind=='document': values['due']=o.proposed_expiry
         if db.execute(update(Obligation).where(Obligation.id==oid,Obligation.version==body.version).values(**values)).rowcount!=1: raise HTTPException(409,'Obligation changed')
-        audit(db,c,u,'compliance_verified',o.title); return {'ok':True}
+        o.verified_by=u.id
+        o.verified_at=datetime.now(timezone.utc).isoformat()
+        db.add(Audit(case_id=c.id,actor=u.id,action='compliance_verified',detail=f'{o.title}; verified by {u.id} at {o.verified_at}'))
+        return {'ok':True}
+    @app.post('/api/obligations/{oid}/review')
+    def review_obligation(oid:int,body:ComplianceReview,u=Depends(current),db=Depends(db_session)):
+        o=db.get(Obligation,oid)
+        if not o: raise HTTPException(404)
+        c=case_for(o.case_id,u,db)
+        reviewer(c,u)
+        if o.status!='submitted': raise HTTPException(409,'Only submitted evidence can be returned for clarification')
+        if db.execute(update(Obligation).where(Obligation.id==oid,Obligation.version==body.version).values(status='clarification',review_note=body.reason.strip(),requires_replacement=True,version=body.version+1)).rowcount!=1: raise HTTPException(409,'Obligation changed')
+        audit(db,c,u,'compliance_clarification_requested',f'{o.title}: {body.reason.strip()}')
+        db.flush(); db.refresh(o)
+        return serial(o)
     @app.get('/api/notifications')
     def notifications(u=Depends(current),db=Depends(db_session)):
         ids=[c.id for c in db.scalars(select(Case)) if permitted(c,u)]

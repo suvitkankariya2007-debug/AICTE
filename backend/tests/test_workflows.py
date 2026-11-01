@@ -203,6 +203,25 @@ def test_obligation_verification_and_expiry(client):
     login(c,'regional-west');assert c.post(f"/api/obligations/{doc['id']}/verify",json={'version':changed['version']}).status_code==200
     updated=next(o for o in c.get('/api/obligations').json() if o['id']==doc['id']);assert updated['due']==future
 
+def test_compliance_clarification_and_resubmission(client):
+    login(client,'college-west')
+    obligation=next(o for o in client.get('/api/obligations').json() if o['kind']=='undertaking')
+    assert client.post(f"/api/obligations/{obligation['id']}/files",data={'version':obligation['version']},files={'file':('proof.txt',b'Initial proof','text/plain')}).status_code==200
+    obligation=next(o for o in client.get('/api/obligations').json() if o['id']==obligation['id'])
+    assert client.post(f"/api/obligations/{obligation['id']}/evidence",json={'version':obligation['version'],'evidence':'Initial submission'}).status_code==200
+    login(client,'regional-west')
+    obligation=next(o for o in client.get('/api/obligations').json() if o['id']==obligation['id'])
+    review=client.post(f"/api/obligations/{obligation['id']}/review",json={'version':obligation['version'],'reason':'Please provide a signed supporting record.'})
+    assert review.status_code==200
+    assert review.json()['status']=='clarification'
+    login(client,'college-west')
+    obligation=next(o for o in client.get('/api/obligations').json() if o['id']==obligation['id'])
+    assert client.post(f"/api/obligations/{obligation['id']}/evidence",json={'version':obligation['version'],'evidence':'Must not submit without replacement file'}).status_code==422
+    assert client.post(f"/api/obligations/{obligation['id']}/files",data={'version':obligation['version']},files={'file':('replacement.txt',b'Signed replacement proof','text/plain')}).status_code==200
+    obligation=next(o for o in client.get('/api/obligations').json() if o['id']==obligation['id'])
+    assert client.post(f"/api/obligations/{obligation['id']}/evidence",json={'version':obligation['version'],'evidence':'Replacement submission'}).status_code==200
+    assert next(o for o in client.get('/api/obligations').json() if o['id']==obligation['id'])['status']=='submitted'
+
 def test_sweep_dedup_and_renewed_document_monitoring(client):
     c=client;login(c,'admin');first=c.post('/api/alerts/sweep').json();assert first['created']>0
     assert c.post('/api/alerts/sweep').json()['created']==0

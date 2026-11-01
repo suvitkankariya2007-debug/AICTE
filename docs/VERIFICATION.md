@@ -99,3 +99,12 @@ Validation note: dependencies were installed from the existing `backend/requirem
 - Seeded the existing West EVC demo with two accepted synthetic members.
 - Added migration `0008_evc_participants`.
 - Backend regression suite: **23 passed**; frontend tests, typecheck, and build remain passing.
+
+## Module 7 — compliance review and document validity
+
+- Added explicit compliance clarification state and review reason.
+- Added official verification actor and timestamp metadata.
+- Added replacement-evidence requirement after clarification.
+- Replacement uploads reset the obligation to pending and clear prior verification metadata.
+- Added migration `0009_compliance_review` and `0010_compliance_replacement`.
+- Added regression coverage for clarification, required replacement, resubmission, and continued verification invariants.

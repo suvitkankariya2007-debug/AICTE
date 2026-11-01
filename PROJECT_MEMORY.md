@@ -151,3 +151,5 @@ Module 4 adds structured scrutiny findings with reviewer-only creation/closure, 
 Module 5 adds durable assignment history, active reviewer conflict declaration/clearance, membership-based reviewer eligibility, and migration backfill for existing application owners. Assignment remains manual and coordinator-confirmed; automatic expertise/capacity recommendations remain deferred.
 
 Module 6 adds EVC participant assignment, acceptance/decline, conflict handling, and a two-member conflict-free quorum gate before EVC decision advancement. Expert appointment remains synthetic and committee/SAC/SHC procedures are still deferred.
+
+Module 7 adds compliance clarification/rejection state, reviewer reason, verification actor/time metadata, and mandatory replacement evidence after clarification. Compliance status remains separate from application status; real obligation templates and statutory rules remain deferred.
