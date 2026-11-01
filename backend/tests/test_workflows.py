@@ -5,7 +5,7 @@ from datetime import datetime, timedelta, timezone
 import pytest
 from fastapi.testclient import TestClient
 from app.main import create_app
-from app.db import Case, Audit, Obligation, Notice, RoleMembership
+from app.db import Case, Audit, Obligation, Notice, RoleMembership, WorkerHeartbeat
 from app.engine import sweep
 from sqlalchemy import select
 from app.config import load_settings
@@ -93,6 +93,10 @@ def test_request_correlation_and_health(client):
     invalid=client.get('/api/health',headers={'X-Request-ID':'bad\nrequest'})
     assert invalid.status_code==200
     assert invalid.headers['X-Request-ID']!='bad\nrequest'
+    readiness=client.get('/api/health/ready')
+    assert readiness.status_code==200
+    assert readiness.json()['database']=='ok'
+    assert readiness.json()['worker']['status']=='unknown'
 
 def test_settings_reject_invalid_values(monkeypatch):
     monkeypatch.setenv('DATABASE_URL','mysql://localhost/aicte')

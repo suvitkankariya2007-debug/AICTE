@@ -8,7 +8,7 @@ from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field, ConfigDict
 from sqlalchemy import select, update
 from sqlalchemy.exc import IntegrityError
-from .db import Base, User, RoleMembership, RuleSet, LoginSession, Case, Assignment, EvcParticipant, Document, Finding, Obligation, Audit, Notice, setup
+from .db import Base, User, RoleMembership, RuleSet, LoginSession, Case, Assignment, EvcParticipant, Document, Finding, Obligation, Audit, Notice, WorkerHeartbeat, setup
 from .rules import RULES, VERSION, SOURCE, validate_definitions
 from .engine import move, audit, sweep, utc
 from .config import load_settings
@@ -146,6 +146,15 @@ def create_app(url=None):
         if not (has_membership(u,'scrutiny_officer',region=c.region) or has_membership(u,'regional_officer',region=c.region)): raise HTTPException(403,'Reviewer permission required')
     @app.get('/api/health')
     def health(): return {'status':'ok','mode':'DEMO','rule_status':'NEEDS_APH_VERIFICATION'}
+    @app.get('/api/health/ready')
+    def readiness(db=Depends(db_session)):
+        db.execute(select(1))
+        heartbeat=db.get(WorkerHeartbeat,1)
+        return {
+            'status':'ready',
+            'database':'ok',
+            'worker':serial(heartbeat) if heartbeat else {'status':'unknown'},
+        }
     @app.get('/api/demo-accounts')
     def accounts(db=Depends(db_session)):
         if not settings.demo_mode: raise HTTPException(404)

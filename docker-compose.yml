@@ -21,6 +21,7 @@ services:
       test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/api/health')"]
       interval: 5s
       retries: 20
+      start_period: 10s
     depends_on:
       db:
         condition: service_healthy

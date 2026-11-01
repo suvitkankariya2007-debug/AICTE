@@ -157,3 +157,5 @@ Module 7 adds compliance clarification/rejection state, reviewer reason, verific
 Module 8 adds notification delivery lifecycle metadata and national-oversight retry for failed simulated deliveries. Deadline deduplication remains persistent; real provider adapters, retry backoff, and transactional outbox remain deferred.
 
 Module 10 adds a reviewable document extraction foundation. Plain text is extracted deterministically; PDFs remain failed with an explicit OCR-not-configured error. Extracted content is never treated as authoritative until an authorized reviewer accepts it.
+
+Module 11 adds database-backed readiness and a persistent deadline-worker heartbeat. Worker iteration failures are logged and exposed through heartbeat state; Docker/PostgreSQL runtime remains unverified locally.

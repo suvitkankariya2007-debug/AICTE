@@ -124,3 +124,11 @@ Validation note: dependencies were installed from the existing `backend/requirem
 - PDF processing remains explicitly failed until a real OCR provider is configured.
 - Added reviewer-only process and extraction-review endpoints.
 - Added migration `0012_document_extraction` and regression coverage for authorization and manual review.
+
+## Module 11 — production integration hardening
+
+- Added database-backed readiness reporting at `/api/health/ready`.
+- Added persistent deadline worker heartbeat with last start, completion, error, and processed-count fields.
+- Worker failures are logged and surfaced without silently converting failed iterations into successful health state.
+- Added migration `0013_worker_heartbeat` and readiness regression coverage.
+- Docker app healthcheck now includes a startup grace period; PostgreSQL/Docker execution remains unverified locally.

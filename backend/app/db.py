@@ -180,6 +180,13 @@ class Notice(Base):
     attempts: Mapped[int]=mapped_column(default=1)
     last_error: Mapped[str]=mapped_column(Text,default='')
     delivered_at: Mapped[str]=mapped_column(default=now)
+class WorkerHeartbeat(Base):
+    __tablename__='worker_heartbeats'
+    id: Mapped[int]=mapped_column(primary_key=True)
+    last_started: Mapped[str]=mapped_column(default='')
+    last_completed: Mapped[str]=mapped_column(default='')
+    last_error: Mapped[str]=mapped_column(Text,default='')
+    processed: Mapped[int]=mapped_column(default=0)
 
 def setup(url=None):
     url=url or os.getenv('DATABASE_URL','sqlite:///./aicte.db')
