@@ -91,6 +91,13 @@ def create_app(url=None):
             and (institution is None or m.institution==institution)
             for m in u.memberships
         )
+    def membership(u,role,region=None,institution=None):
+        return next((
+            m for m in u.memberships
+            if m.active and m.role==role
+            and (region is None or m.region==region)
+            and (institution is None or m.institution==institution)
+        ),None)
     def permitted(c,u):
         return (
             has_membership(u,'national_admin')
@@ -144,14 +151,15 @@ def create_app(url=None):
         return [serial(c) for c in db.scalars(select(Case).order_by(Case.entered.desc())) if permitted(c,u)]
     @app.post('/api/applications')
     def create(body:Create,u=Depends(current),db=Depends(db_session)):
-        if u.role!='institution': raise HTTPException(403,'Institution permission required')
+        scope=membership(u,'institution')
+        if not scope: raise HTTPException(403,'Institution permission required')
         if body.kind not in RULES: raise HTTPException(422,'Unknown application type')
         key=u.id+':'+body.idempotency_key
         prior=db.scalar(select(Case).where(Case.submit_key==key))
         if prior:
             if prior.kind!=body.kind: raise HTTPException(409,'Idempotency key belongs to another request')
             return serial(prior)
-        c=Case(id='APP-'+secrets.token_hex(4).upper(),institution=u.institution,region=u.region,kind=body.kind,state='draft',route=RULES[body.kind]['route'],rule_version=VERSION,owner='officer-west' if u.region=='West Demo' else 'officer-east',due=(datetime.now(timezone.utc)+timedelta(days=7)).isoformat(),submit_key=key)
+        c=Case(id='APP-'+secrets.token_hex(4).upper(),institution=scope.institution,region=scope.region,kind=body.kind,state='draft',route=RULES[body.kind]['route'],rule_version=VERSION,owner='officer-west' if scope.region=='West Demo' else 'officer-east',due=(datetime.now(timezone.utc)+timedelta(days=7)).isoformat(),submit_key=key)
         db.add(c); db.flush(); audit(db,c,u,'draft_created',SOURCE); return serial(c)
     @app.get('/api/applications/{cid}')
     def detail(cid:str,u=Depends(current),db=Depends(db_session)):
@@ -160,7 +168,7 @@ def create_app(url=None):
     @app.post('/api/applications/{cid}/documents')
     async def upload(cid:str,slot:str=Form(...),version:int=Form(...),file:UploadFile=File(...),u=Depends(current),db=Depends(db_session)):
         c=case_for(cid,u,db)
-        if u.role!='institution' or c.state not in ['draft','correction']: raise HTTPException(403,'Uploads permitted only during draft/correction')
+        if not has_membership(u,'institution',institution=c.institution) or c.state not in ['draft','correction']: raise HTTPException(403,'Uploads permitted only during draft/correction')
         if slot not in RULES[c.kind]['slots']: raise HTTPException(422,'Unknown checklist slot')
         data=await file.read(2*1024*1024+1)
         if not data or len(data)>2*1024*1024: raise HTTPException(422,'Upload must be between 1 byte and 2 MB')
@@ -180,7 +188,7 @@ def create_app(url=None):
     @app.post('/api/applications/{cid}/submit')
     def submit(cid:str,body:Verify,u=Depends(current),db=Depends(db_session)):
         c=case_for(cid,u,db)
-        if u.role!='institution' or c.state not in ['draft','correction']: raise HTTPException(403,'Not awaiting institutional submission')
+        if not has_membership(u,'institution',institution=c.institution) or c.state not in ['draft','correction']: raise HTTPException(403,'Not awaiting institutional submission')
         slots={d.slot for d in db.scalars(select(Document).where(Document.case_id==cid))}
         missing=set(RULES[c.kind]['slots'])-slots
         if missing: raise HTTPException(422,'Missing required evidence: '+', '.join(sorted(missing)))
@@ -195,14 +203,14 @@ def create_app(url=None):
     @app.post('/api/applications/{cid}/transition')
     def transition(cid:str,body:Action,u=Depends(current),db=Depends(db_session)):
         c=case_for(cid,u,db); reviewer(c,u)
-        if body.target in ['approved','rejected'] and u.role!='regional_officer': raise HTTPException(403,'Demo decision authority required')
+        if body.target in ['approved','rejected'] and not has_membership(u,'regional_officer',region=c.region): raise HTTPException(403,'Demo decision authority required')
         if not body.reason.strip(): raise HTTPException(422,'Record review findings / reasons')
         if c.state=='evc' and body.target=='decision' and (not c.schedule or not c.report.strip()): raise HTTPException(422,'EVC schedule and report required')
         return serial(move(db,c,u,body.target,body.version,body.reason))
     @app.post('/api/applications/{cid}/evc')
     def evc(cid:str,body:Schedule,u=Depends(current),db=Depends(db_session)):
         c=case_for(cid,u,db)
-        if u.role!='regional_officer' or c.state!='evc': raise HTTPException(403,'Regional coordinator required at EVC stage')
+        if not has_membership(u,'regional_officer',region=c.region) or c.state!='evc': raise HTTPException(403,'Regional coordinator required at EVC stage')
         date=utc(body.date).isoformat()
         if db.execute(update(Case).where(Case.id==cid,Case.version==body.version).values(schedule=date,report=body.report,version=body.version+1)).rowcount!=1: raise HTTPException(409,'Case changed')
         audit(db,c,u,'evc_updated',f'Schedule {date}; report: {body.report}')
@@ -211,13 +219,18 @@ def create_app(url=None):
     @app.get('/api/reviewers')
     def reviewers(case_id:str,u=Depends(current),db=Depends(db_session)):
         c=case_for(case_id,u,db)
-        if u.role!='regional_officer': raise HTTPException(403,'Regional coordinator required')
-        users=list(db.scalars(select(User).where(User.role=='scrutiny_officer',User.region==c.region)))
+        if not has_membership(u,'regional_officer',region=c.region): raise HTTPException(403,'Regional coordinator required')
+        reviewer_ids=select(RoleMembership.user_id).where(
+            RoleMembership.role=='scrutiny_officer',
+            RoleMembership.region==c.region,
+            RoleMembership.active.is_(True),
+        )
+        users=list(db.scalars(select(User).where(User.id.in_(reviewer_ids))))
         return [{**serial(r),'open_cases':len(list(db.scalars(select(Case).where(Case.owner==r.id,Case.state.not_in(['approved','rejected'])))))} for r in users]
     @app.post('/api/applications/{cid}/assign')
     def assign(cid:str,body:Assign,u=Depends(current),db=Depends(db_session)):
         c=case_for(cid,u,db)
-        if u.role!='regional_officer': raise HTTPException(403,'Regional coordinator required')
+        if not has_membership(u,'regional_officer',region=c.region): raise HTTPException(403,'Regional coordinator required')
         if c.state in ['approved','rejected']: raise HTTPException(409,'Closed application cannot be reassigned')
         if len(body.reason.strip())<5: raise HTTPException(422,'Provide a meaningful assignment reason')
         r=db.get(User,body.reviewer_id)
@@ -233,7 +246,7 @@ def create_app(url=None):
         o=db.get(Obligation,oid)
         if not o: raise HTTPException(404)
         c=case_for(o.case_id,u,db)
-        if u.role!='institution': raise HTTPException(403,'Institution permission required')
+        if not has_membership(u,'institution',institution=c.institution): raise HTTPException(403,'Institution permission required')
         data=await file.read(2*1024*1024+1)
         if not data or len(data)>2*1024*1024: raise HTTPException(422,'Upload must be between 1 byte and 2 MB')
         if not ((file.content_type=='application/pdf' and data.startswith(b'%PDF-')) or (file.content_type=='text/plain' and b'\x00' not in data)):
@@ -254,7 +267,7 @@ def create_app(url=None):
         o=db.get(Obligation,oid)
         if not o: raise HTTPException(404)
         c=case_for(o.case_id,u,db)
-        if u.role!='institution': raise HTTPException(403,'Institution permission required')
+        if not has_membership(u,'institution',institution=c.institution): raise HTTPException(403,'Institution permission required')
         if len(body.evidence.strip())<5: raise HTTPException(422,'Provide a meaningful evidence description')
         if not db.scalar(select(Document).where(Document.case_id==c.id,Document.slot==f'obligation:{oid}')): raise HTTPException(422,'Upload the supporting evidence file before submitting')
         expiry=utc(body.expiry).isoformat() if o.kind=='document' else ''
@@ -276,10 +289,10 @@ def create_app(url=None):
     def notifications(u=Depends(current),db=Depends(db_session)):
         ids=[c.id for c in db.scalars(select(Case)) if permitted(c,u)]
         notices=db.scalars(select(Notice).where(Notice.case_id.in_(ids)).order_by(Notice.id.desc()))
-        return [serial(n) for n in notices if u.role!='institution' or n.recipient=='institution']
+        return [serial(n) for n in notices if not has_membership(u,'institution') or n.recipient=='institution']
     @app.post('/api/alerts/sweep')
     def alerts(u=Depends(current),db=Depends(db_session)):
-        if u.role!='national_admin': raise HTTPException(403,'National oversight permission required')
+        if not has_membership(u,'national_admin'): raise HTTPException(403,'National oversight permission required')
         return {'created':sweep(db),'delivery':'simulated'}
     static=os.path.abspath(os.path.join(os.path.dirname(__file__),'../../frontend/dist'))
     if os.path.isdir(static): app.mount('/',StaticFiles(directory=static,html=True),name='frontend')

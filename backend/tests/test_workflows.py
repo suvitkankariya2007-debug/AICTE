@@ -4,7 +4,7 @@ from datetime import datetime, timedelta, timezone
 import pytest
 from fastapi.testclient import TestClient
 from app.main import create_app
-from app.db import Case, Audit, Obligation, Notice
+from app.db import Case, Audit, Obligation, Notice, RoleMembership
 from app.engine import sweep
 from sqlalchemy import select
 from app.config import load_settings
@@ -46,6 +46,17 @@ def test_cookie_security_uses_validated_settings(tmp_path,monkeypatch):
     with TestClient(app) as c:
         response=c.post('/api/login',json={'username':'admin','password':'DemoPass!2026'})
         assert 'Secure' in response.headers['set-cookie']
+
+def test_inactive_membership_cannot_authorize_actions(client):
+    login(client,'college-west')
+    with client.app.state.factory.begin() as db:
+        membership=db.scalar(select(RoleMembership).where(
+            RoleMembership.user_id=='college-west',
+            RoleMembership.role=='institution',
+        ))
+        membership.active=False
+    assert client.get('/api/applications').status_code==200
+    assert client.post('/api/applications',json={'kind':'eoa','idempotency_key':'inactive-001'}).status_code==403
 
 def test_request_correlation_and_health(client):
     response=client.get('/api/health',headers={'X-Request-ID':'test-request-id'})
