@@ -190,6 +190,8 @@ Validation note: dependencies were installed from the existing `backend/requirem
 - The live API was verified with 20 application types, each carrying its track metadata.
 - The intake selector now displays every application type in one selectable list instead of hiding entries inside track-only groups.
 
+The selector was refined into a categorical two-step picker: users choose T1, T2, T3, or T4 first, then choose from only that track's application types. Frontend tests: **4 passed**; TypeScript/Vite build passed.
+
 ## Browser runtime verification
 
 - Installed the pinned Playwright Chromium runtime.
