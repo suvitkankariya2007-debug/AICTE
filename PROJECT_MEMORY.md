@@ -137,3 +137,7 @@ Remaining: full APH validation, workload recommendations/expertise/conflicts, co
 Foundation hardening is complete on `test`: validated environment settings, request correlation and structured access logging, operational database indexes with an idempotent migration, and regression tests for the new contracts. Backend tests pass 16/16; frontend tests pass 10/10; typecheck and production build pass. Existing npm audit findings remain outside this module's scope.
 
 Follow-up hardening resolved the frontend audit findings, bounded client-provided request IDs, and made Docker use migration-first startup with `AUTO_CREATE_SCHEMA=false`; local and test startup retain automatic schema creation.
+
+## Module 1 update — identity and authorization foundation
+
+Added persisted active role memberships scoped by role, region, and institution, with `/api/me/roles`. Case and reviewer access now require matching active memberships, and secure-cookie configuration uses validated settings. Migration `0003` is compatible with the existing initial `create_all` bootstrap. Backend tests pass 17/17; frontend behavior remains unchanged.

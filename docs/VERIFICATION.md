@@ -42,3 +42,13 @@ Validation note: dependencies were installed from the existing `backend/requirem
 - Correlation IDs now accept only bounded alphanumeric IDs with `.`, `_`, `:` and `-`; invalid values are replaced with a generated ID before logging or response headers.
 - Production Docker startup now sets `AUTO_CREATE_SCHEMA=false` and uses the existing Alembic upgrade command. Local/test startup retains `AUTO_CREATE_SCHEMA=true` for the lightweight demo flow.
 - Frontend build tooling was upgraded to address the reported Vite, Vitest, and Tinypool advisories; tests and build were rerun after the upgrade.
+
+## Module 1 — identity and authorization foundation
+
+- Added persisted, active role memberships with region and institution scope.
+- Added `/api/me/roles` for verified memberships; existing login and UI user payloads remain backward compatible.
+- Case access and reviewer authorization now require an active matching membership instead of trusting only the legacy user fields.
+- Session cookies now use validated `COOKIE_SECURE` settings.
+- Added an idempotent role-membership migration compatible with the repository's initial schema bootstrap.
+- Backend regression suite: **17 passed**.
+- Frontend tests, typecheck, and production build remain required regression checks for the unchanged UI.

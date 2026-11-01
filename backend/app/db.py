@@ -1,7 +1,7 @@
 import os
 from datetime import datetime, timezone
 from sqlalchemy import create_engine, String, Integer, Text, JSON, ForeignKey, Index, event
-from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, sessionmaker
+from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship, sessionmaker
 
 def now():
     return datetime.now(timezone.utc).isoformat()
@@ -15,6 +15,23 @@ class User(Base):
     region: Mapped[str]
     institution: Mapped[str]
     password: Mapped[str]
+    memberships: Mapped[list['RoleMembership']]=relationship(
+        back_populates='user', cascade='all, delete-orphan'
+    )
+
+class RoleMembership(Base):
+    __tablename__='role_memberships'
+    __table_args__=(
+        Index('ix_role_memberships_user_active', 'user_id', 'active'),
+        Index('ix_role_memberships_scope', 'role', 'region', 'institution'),
+    )
+    id: Mapped[int]=mapped_column(primary_key=True)
+    user_id: Mapped[str]=mapped_column(ForeignKey('users.id'))
+    role: Mapped[str]
+    region: Mapped[str]
+    institution: Mapped[str]
+    active: Mapped[bool]=mapped_column(default=True)
+    user: Mapped[User]=relationship(back_populates='memberships')
 class LoginSession(Base):
     __tablename__='sessions'
     __table_args__=(Index('ix_sessions_expires', 'expires'),)

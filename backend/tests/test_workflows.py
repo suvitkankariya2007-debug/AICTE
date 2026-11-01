@@ -30,12 +30,22 @@ def test_auth_and_scope(client):
     assert c.get('/api/applications').status_code==401
     assert c.post('/api/login',json={'username':'admin','password':'wrong'}).status_code==401
     login(c,'college-east')
+    roles=c.get('/api/me/roles')
+    assert roles.status_code==200
+    assert roles.json()[0]['role']=='institution'
     assert [x['id'] for x in c.get('/api/applications').json()]==['APP-EAST-0100']
     assert c.get('/api/applications/APP-DEMO-0402').status_code==404
     assert c.post('/api/alerts/sweep').status_code==403
     assert c.post('/api/applications',json={'kind':'eoa','idempotency_key':'12345678','role':'admin'}).status_code==422
     assert c.post('/api/logout').status_code==200
     assert c.get('/api/me').status_code==401
+
+def test_cookie_security_uses_validated_settings(tmp_path,monkeypatch):
+    monkeypatch.setenv('COOKIE_SECURE','true')
+    app=create_app('sqlite:///'+str(tmp_path/'secure.db'))
+    with TestClient(app) as c:
+        response=c.post('/api/login',json={'username':'admin','password':'DemoPass!2026'})
+        assert 'Secure' in response.headers['set-cookie']
 
 def test_request_correlation_and_health(client):
     response=client.get('/api/health',headers={'X-Request-ID':'test-request-id'})

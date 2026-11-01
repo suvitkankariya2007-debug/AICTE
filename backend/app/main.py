@@ -7,7 +7,7 @@ from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field, ConfigDict
 from sqlalchemy import select, update
 from sqlalchemy.exc import IntegrityError
-from .db import Base, User, LoginSession, Case, Document, Obligation, Audit, Notice, setup
+from .db import Base, User, RoleMembership, LoginSession, Case, Document, Obligation, Audit, Notice, setup
 from .rules import RULES, VERSION, SOURCE
 from .engine import move, audit, sweep, utc
 from .config import load_settings
@@ -81,15 +81,29 @@ def create_app(url=None):
     def current(request:Request,db=Depends(db_session)):
         session=db.get(LoginSession,hashlib.sha256(request.cookies.get('session','').encode()).hexdigest())
         if not session or utc(session.expires)<=datetime.now(timezone.utc): raise HTTPException(401,'Please sign in')
-        return db.get(User,session.user_id)
+        user=db.get(User,session.user_id)
+        if not user: raise HTTPException(401,'Please sign in')
+        return user
+    def has_membership(u,role,region=None,institution=None):
+        return any(
+            m.active and m.role==role
+            and (region is None or m.region==region)
+            and (institution is None or m.institution==institution)
+            for m in u.memberships
+        )
     def permitted(c,u):
-        return u.role=='national_admin' or (u.role=='institution' and c.institution==u.institution) or (u.role=='regional_officer' and c.region==u.region) or (u.role=='scrutiny_officer' and c.owner==u.id and c.region==u.region)
+        return (
+            has_membership(u,'national_admin')
+            or has_membership(u,'institution',institution=c.institution)
+            or has_membership(u,'regional_officer',region=c.region)
+            or (has_membership(u,'scrutiny_officer',region=c.region) and c.owner==u.id)
+        )
     def case_for(cid,u,db):
         c=db.get(Case,cid)
         if not c or not permitted(c,u): raise HTTPException(404,'Application not found in your scope')
         return c
     def reviewer(c,u):
-        if u.role not in ['scrutiny_officer','regional_officer'] or c.region!=u.region: raise HTTPException(403,'Reviewer permission required')
+        if not (has_membership(u,'scrutiny_officer',region=c.region) or has_membership(u,'regional_officer',region=c.region)): raise HTTPException(403,'Reviewer permission required')
     @app.get('/api/health')
     def health(): return {'status':'ok','mode':'DEMO','rule_status':'NEEDS_APH_VERIFICATION'}
     @app.get('/api/demo-accounts')
@@ -102,7 +116,7 @@ def create_app(url=None):
         if not u or not check_password(body.password,u.password): raise HTTPException(401,'Invalid credentials')
         token=secrets.token_urlsafe(32)
         db.add(LoginSession(token=hashlib.sha256(token.encode()).hexdigest(),user_id=u.id,expires=(datetime.now(timezone.utc)+timedelta(hours=8)).isoformat()))
-        response.set_cookie('session',token,httponly=True,samesite='strict',secure=os.getenv('COOKIE_SECURE','false')=='true',max_age=28800)
+        response.set_cookie('session',token,httponly=True,samesite='strict',secure=settings.cookie_secure,max_age=28800)
         return serial(u)
     @app.post('/api/logout')
     def logout(request:Request,response:Response,db=Depends(db_session)):
@@ -111,6 +125,18 @@ def create_app(url=None):
         response.delete_cookie('session'); return {'ok':True}
     @app.get('/api/me')
     def me(u=Depends(current)): return serial(u)
+    @app.get('/api/me/roles')
+    def roles(u=Depends(current)):
+        return [
+            {
+                'id':membership.id,
+                'role':membership.role,
+                'region':membership.region,
+                'institution':membership.institution,
+            }
+            for membership in u.memberships
+            if membership.active
+        ]
     @app.get('/api/rules')
     def rules(u=Depends(current)): return {'version':VERSION,'source':SOURCE,'types':RULES}
     @app.get('/api/applications')
@@ -263,6 +289,10 @@ def seed(db):
     if db.get(User,'college-west'):
         if not db.get(User,'officer-west-2'):
             db.add(User(id='officer-west-2',name='Dr. Kavya Rao',role='scrutiny_officer',region='West Demo',institution='',password=hash_password(DEMO_PASSWORD)))
+        users=list(db.scalars(select(User)))
+        for user in users:
+            if not user.memberships:
+                db.add(RoleMembership(user_id=user.id,role=user.role,region=user.region,institution=user.institution))
         return
     if os.getenv('DEMO_MODE','true')!='true': raise RuntimeError('This release supports DEMO_MODE=true only')
     for id,name,role,region,inst in [
@@ -274,6 +304,7 @@ def seed(db):
         ('regional-west','Priya Shah','regional_officer','West Demo',''),
         ('admin','National oversight','national_admin','','')]:
         db.add(User(id=id,name=name,role=role,region=region,institution=inst,password=hash_password(DEMO_PASSWORD)))
+        db.add(RoleMembership(user_id=id,role=role,region=region,institution=inst))
     stamp=datetime.now(timezone.utc)
     for id,kind,state,offset in [('APP-DEMO-0402','new_course','scrutiny',2),('APP-DEMO-0398','eoa','decision',-9),('APP-DEMO-0310','eoa','approved',7)]:
         c=Case(id=id,institution='Pune Demo Institute',region='West Demo',kind=kind,state=state,route=RULES[kind]['route'],rule_version=VERSION,owner='officer-west',entered=(stamp-timedelta(days=8)).isoformat(),due=(stamp+timedelta(days=offset)).isoformat(),submit_key='seed:'+id)
