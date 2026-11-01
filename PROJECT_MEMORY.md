@@ -153,3 +153,5 @@ Module 5 adds durable assignment history, active reviewer conflict declaration/c
 Module 6 adds EVC participant assignment, acceptance/decline, conflict handling, and a two-member conflict-free quorum gate before EVC decision advancement. Expert appointment remains synthetic and committee/SAC/SHC procedures are still deferred.
 
 Module 7 adds compliance clarification/rejection state, reviewer reason, verification actor/time metadata, and mandatory replacement evidence after clarification. Compliance status remains separate from application status; real obligation templates and statutory rules remain deferred.
+
+Module 8 adds notification delivery lifecycle metadata and national-oversight retry for failed simulated deliveries. Deadline deduplication remains persistent; real provider adapters, retry backoff, and transactional outbox remain deferred.

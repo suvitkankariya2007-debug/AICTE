@@ -108,3 +108,11 @@ Validation note: dependencies were installed from the existing `backend/requirem
 - Replacement uploads reset the obligation to pending and clear prior verification metadata.
 - Added migration `0009_compliance_review` and `0010_compliance_replacement`.
 - Added regression coverage for clarification, required replacement, resubmission, and continued verification invariants.
+
+## Module 8 — notification delivery and escalation foundation
+
+- Added notification delivery status, attempt count, error text, and delivered timestamp.
+- Deadline sweep records simulated delivery as an auditable delivered attempt.
+- Added national-oversight-only retry for failed notifications.
+- Retry clears the failure and records an audit event; deduplication remains unchanged.
+- Added migration `0011_notification_delivery` and retry regression coverage.

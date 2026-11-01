@@ -230,6 +230,22 @@ def test_sweep_dedup_and_renewed_document_monitoring(client):
         n=sweep(db,datetime.now(timezone.utc)+timedelta(days=30));assert n>0
     assert any(n['level']=='escalated' for n in c.get('/api/notifications').json())
 
+def test_notification_delivery_state_and_retry(client):
+    login(client,'admin')
+    assert client.post('/api/alerts/sweep').status_code==200
+    with client.app.state.factory.begin() as db:
+        notice=db.scalar(select(Notice))
+        notice.status='failed'
+        notice.last_error='Simulated provider unavailable'
+        notice.attempts=1
+        notification_id=notice.id
+    retry=client.post(f'/api/notifications/{notification_id}/retry')
+    assert retry.status_code==200
+    assert retry.json()['status']=='delivered'
+    assert retry.json()['attempts']==2
+    assert retry.json()['last_error']==''
+    assert client.post(f'/api/notifications/{notification_id}/retry').status_code==409
+
 def test_transaction_rollback(client):
     c=client;login(c,'officer-west');before=detail(c,'APP-DEMO-0402')
     assert action(c,before,'invented_stage').status_code==409

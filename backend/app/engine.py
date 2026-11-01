@@ -48,7 +48,16 @@ def sweep(db,clock=None):
         key=f'{kind}:{item}:{version}:{due}:{level}'
         if db.scalar(select(Notice).where(Notice.dedup==key)): continue
         recipient='national_admin' if level=='escalated' else 'regional_officer' if level=='overdue' else 'institution'
-        db.add(Notice(case_id=cid,recipient=recipient,message=f'{label}: {level} · due {due[:10]}',level=level,dedup=key))
+        db.add(Notice(
+            case_id=cid,
+            recipient=recipient,
+            message=f'{label}: {level} · due {due[:10]}',
+            level=level,
+            dedup=key,
+            status='delivered',
+            attempts=1,
+            delivered_at=clock.isoformat(),
+        ))
         audit(db,cases[cid],None,'deadline_alert',f'{kind} {item}: {level}; recipient {recipient}; delivery simulated')
         count+=1
     return count

@@ -171,6 +171,10 @@ class Notice(Base):
     delivery: Mapped[str]=mapped_column(default='simulated')
     dedup: Mapped[str]=mapped_column(unique=True)
     created: Mapped[str]=mapped_column(default=now)
+    status: Mapped[str]=mapped_column(default='delivered')
+    attempts: Mapped[int]=mapped_column(default=1)
+    last_error: Mapped[str]=mapped_column(Text,default='')
+    delivered_at: Mapped[str]=mapped_column(default=now)
 
 def setup(url=None):
     url=url or os.getenv('DATABASE_URL','sqlite:///./aicte.db')

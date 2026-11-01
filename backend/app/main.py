@@ -460,6 +460,20 @@ def create_app(url=None):
         ids=[c.id for c in db.scalars(select(Case)) if permitted(c,u)]
         notices=db.scalars(select(Notice).where(Notice.case_id.in_(ids)).order_by(Notice.id.desc()))
         return [serial(n) for n in notices if not has_membership(u,'institution') or n.recipient=='institution']
+    @app.post('/api/notifications/{nid}/retry')
+    def retry_notification(nid:int,u=Depends(current),db=Depends(db_session)):
+        if not has_membership(u,'national_admin'): raise HTTPException(403,'National oversight permission required')
+        notice=db.get(Notice,nid)
+        if not notice: raise HTTPException(404,'Notification not found')
+        if notice.status!='failed': raise HTTPException(409,'Only failed notifications can be retried')
+        notice.status='delivered'
+        notice.attempts+=1
+        notice.last_error=''
+        notice.delivered_at=datetime.now(timezone.utc).isoformat()
+        case=db.get(Case,notice.case_id)
+        if case: audit(db,case,u,'notification_retried',f'Notification {nid}; simulated delivery attempt {notice.attempts}')
+        db.flush()
+        return serial(notice)
     @app.post('/api/alerts/sweep')
     def alerts(u=Depends(current),db=Depends(db_session)):
         if not has_membership(u,'national_admin'): raise HTTPException(403,'National oversight permission required')
