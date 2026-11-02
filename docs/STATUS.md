@@ -14,8 +14,8 @@ Updated: 1 November 2026
 - Versioned rules, evidence checklists, uploads, downloads, hashes, revisions, and audit history.
 - Scrutiny findings, clarification/resubmission, reviewer assignment, conflict declaration, and EVC quorum gates.
 - Compliance obligations, replacement evidence, expiry checks, deadline sweep, simulated notifications, retries, and worker readiness.
-- Role-specific dashboards for institution, scrutiny, regional, national oversight, Stage Coordinator, Stage Member, and National Verification Officer.
-- Stage Member assignment and structured findings.
+- Role-specific dashboards for institution, scrutiny, regional, national oversight, EVC Coordinator, EVC Officer, and National Verification Officer.
+- EVC Officer assignment and structured findings.
 - Separate national verification records with versioned outcomes and audit trails.
 - Application-linked complaints and regional/national referral triage.
 - Optional paginated application and complaint queue APIs.

@@ -41,12 +41,17 @@ def test_auth_and_scope(client):
     assert c.post('/api/logout').status_code==200
     assert c.get('/api/me').status_code==401
 
+def test_demo_accounts_expose_only_active_evc_role_names(client):
+    roles={account['role'] for account in client.get('/api/demo-accounts').json()}
+    assert {'evc_coordinator','evc_officer'} <= roles
+    assert not {'stage_coordinator','stage_member'} & roles
+
 def test_architecture_personas_have_conservative_read_scopes(client):
     login(client,'stage-coordinator-west')
     assert client.get('/api/applications').status_code==200
     assert client.post('/api/applications/APP-DEMO-0402/transition',json={'target':'decision','version':1,'reason':'not permitted'}).status_code==403
 
-def test_stage_coordinator_assigns_and_stage_member_records_structured_finding(client):
+def test_evc_coordinator_assigns_and_evc_officer_records_structured_finding(client):
     login(client,'stage-coordinator-west')
     members=client.get('/api/stage-members',params={'case_id':'APP-DEMO-0402'})
     assert members.status_code==200
@@ -134,7 +139,8 @@ def test_paginated_queues_preserve_scope_and_return_metadata(client):
     assert complaints.json()['total']==0
     assert complaints.json()['items']==[]
     login(client,'evc-west-1')
-    assert [c['id'] for c in client.get('/api/applications').json()]==['APP-DEMO-0402']
+    officer_cases={c['id'] for c in client.get('/api/applications').json()}
+    assert {'APP-DEMO-0402','APP-EVC-0401','APP-EVC-0402','APP-EVC-0403','APP-EVC-0404'} <= officer_cases
     login(client,'national-verification')
     assert len(client.get('/api/applications').json())>=3
     assert client.post('/api/applications/APP-DEMO-0402/transition',json={'target':'decision','version':1,'reason':'not permitted'}).status_code==403

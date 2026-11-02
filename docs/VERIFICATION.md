@@ -93,7 +93,7 @@ Validation note: dependencies were installed from the existing `backend/requirem
 ## Module 6 — EVC participant and quorum foundation
 
 - Added persisted EVC participant assignments with acceptance, decline, conflict, active state, and optimistic versions.
-- Added coordinator assignment of eligible regional stage members.
+- Added coordinator assignment of eligible regional EVC officers.
 - Added participant-specific acceptance/decline and conflict APIs.
 - Decision advancement from EVC now requires schedule, report, and two accepted conflict-free members.
 - Seeded the existing West EVC demo with two accepted synthetic members.
@@ -157,8 +157,8 @@ Validation note: dependencies were installed from the existing `backend/requirem
 ## Stage assignment and structured findings
 
 - Added migration `0014_structured_findings` with category, severity, and recommendation fields.
-- Stage Coordinators can assign eligible same-region Stage Members through the existing EVC participant model.
-- Stage Members can submit structured findings only for active participant assignments; they cannot transition applications.
+- EVC Coordinators can assign eligible same-region EVC Officers through the existing EVC participant model.
+- EVC Officers can submit structured findings only for active participant assignments; they cannot transition applications.
 - Backend regression suite: **29 passed**; frontend tests: **4 passed**; TypeScript/Vite build passed.
 
 ## National verification record
@@ -210,7 +210,7 @@ Readability pass: base/supporting text was increased modestly without enlarging 
 
 ## Architecture persona foundation
 
-- Added demo identities for Stage Coordinator, Stage Member, and National Verification Officer.
+- Added demo identities for EVC Coordinator, EVC Officer, and National Verification Officer.
 - Stage members can read only cases with an active participant assignment.
 - Stage coordinators can read cases in their region; national verification officers can read the national queue.
 - These personas are intentionally read-only until their full workflow actions are implemented.
@@ -218,7 +218,7 @@ Readability pass: base/supporting text was increased modestly without enlarging 
 
 ## Stage and national verification workflow foundation
 
-- Added conservative read-scope tests for Stage Coordinator, Stage Member, and National Verification Officer.
+- Added conservative read-scope tests for EVC Coordinator, EVC Officer, and National Verification Officer.
 - Stage members can access only cases with an active participant assignment.
 - Coordinator and national verification personas cannot transition applications through decision endpoints.
 - Added role-specific dashboard copy and metrics for all three personas.

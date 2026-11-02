@@ -28,15 +28,15 @@ Product personas:
 (C) Regional Officer.
 (D) Scrutiny Coordinator.
 (E) Scrutiny Officer.
-(F) Stage Coordinator (EVC/SHC/SAC/other permitted stage).
-(G) Stage Member (EVC/SHC/SAC/other permitted stage).
+(F) EVC Coordinator (EVC/SHC/SAC/other permitted stage).
+(G) EVC Officer (EVC/SHC/SAC/other permitted stage).
 (H) National Verification Officer for case-specific national referrals (proposed platform capability, not a mandatory APH stage).
 
 College experience: select application category, answer conditional intake questions, receive an exact per-application checklist sourced to a versioned APH configuration, upload each required document in its specified slot, submit, see transparent stage-wise progress, respond to clarifications, receive alerts, raise stage-linked delay grievances, see full history and decisions.
 
 AICTE experience: role- and region-scoped work queues, assignment, preliminary automated checks, full application review, findings, clarification loop, stage management, conditional EVC and committee workflows, national verification referral, complaint handling, metrics, notifications and audit trail.
 
-Data and permissions: users can have multiple authorized roles, regions and stage memberships. Role/region selection is restricted to verified assignments, not freely self-declared on a production account. The institution's originating jurisdiction is independent of the current assigned task and can never be overwritten by national referral. National overview is separate from power to change individual outcomes.
+Data and permissions: users can have multiple authorized roles, regions and EVC officerships. Role/region selection is restricted to verified assignments, not freely self-declared on a production account. The institution's originating jurisdiction is independent of the current assigned task and can never be overwritten by national referral. National overview is separate from power to change individual outcomes.
 
 Regulatory accuracy: Four tracks (T1 Heavy Inspection, T2 Standard Evaluation, T3 Routine/Eligible Fast Processing, T4 Legal/Restructuring) are PROJECT UI CLASSIFICATIONS, NOT OFFICIAL AICTE CATEGORIES. Workflow steps and documents are controlled by verified APH clauses, application type, effective dates, eligibility conditions, and corrigenda. Never automatically put SAC appeal or EC approval in all routes. Do not automatically grant EoA, issue genuine approvals, or assume EVC is universally required. NBA accreditation does not universally create fast-track eligibility. No arbitrary use of 'nearest region' instead of authoritative jurisdiction mapping.
 
@@ -64,7 +64,7 @@ Acceptance: services boot, migrations run, seed runs, login navigation works, te
 ```text
 Implement user accounts, institutions, employee directory and verified role memberships. The login screens are College and AICTE; AICTE users switch ONLY among roles and jurisdictions already assigned to them. Use password hashing and secure session/auth token approach appropriate to the app; protect every API query and mutation with backend authorization.
 
-Create roles: national_admin, regional_officer, scrutiny_coordinator, scrutiny_officer, stage_coordinator, stage_member, national_verification_officer. Add stage specialty and authority scope. Seed distinct demo accounts for each role with visible demo credentials on a separate DEMO-only account selection screen. A role can have one or more regional/stage assignments.
+Create roles: national_admin, regional_officer, scrutiny_coordinator, scrutiny_officer, evc_coordinator, evc_officer, national_verification_officer. Add stage specialty and authority scope. Seed distinct demo accounts for each role with visible demo credentials on a separate DEMO-only account selection screen. A role can have one or more regional/stage assignments.
 
 Implement authoritative jurisdiction mapping from state/district to AICTE regional office as a versioned, admin-manageable seed table. Do NOT assume 'Maharashtra' is an official AICTE region name. Use sample jurisdictions explicitly labelled illustrative until verified. Maintain institution_origin_region_id separate from application.current_assignee_team_id. Support cross-region authorized assignment with audit entries and special justification.
 
@@ -158,13 +158,13 @@ National Admin: National Dashboard, All Applications, Regional Performance, Nati
 Regional Officer: Regional Dashboard, New Applications, Regional Applications, Scrutiny Monitoring, National Verification, Complaints & Delays, Reports, History.
 Scrutiny Coordinator: Scrutiny Dashboard, New Application Queue, Officer Assignments, Scrutiny Monitoring, Clarifications, Escalations, History.
 Scrutiny Officer: My Work, Application Review, Clarifications, Refer/Escalate, Completed Work, My History.
-Stage Coordinator: Stage Dashboard, Incoming Applications, Member Assignments, Stage Monitoring, Clarifications, Stage Outcome, Complaints & Delays, History.
-Stage Member: My Assigned Work, Application Review, Record Findings, Clarifications, Completed Reviews, My History.
+EVC Coordinator: Stage Dashboard, Incoming Applications, Member Assignments, Stage Monitoring, Clarifications, Stage Outcome, Complaints & Delays, History.
+EVC Officer: My Assigned Work, Application Review, Record Findings, Clarifications, Completed Reviews, My History.
 National Verification Officer: Verification Dashboard, Incoming Requests, My Verification Work, Clarifications, Verification Outcome, Escalations, History.
 
 UX simplification: inside an application, Review, Findings, and Clarifications should be SUBSECTIONS within a common case workspace, not three disconnected places to process the same application. The sidebar can deep-link to the subsection if users need it. Region filtering is server-side. Use interactive search, filtering, sorting, pagination, action buttons and empty states. Provide synthetic demo cases for each role with meaningful counts calculated from storage.
 
-Acceptance: different role dashboards show different justified actions; coordinator and stage member share the same stage workspace but have different permissions.
+Acceptance: different role dashboards show different justified actions; coordinator and EVC officer share the same stage workspace but have different permissions.
 ```
 
 ## Prompt 9 — Review, findings, clarifications and re-scrutiny
@@ -180,13 +180,13 @@ Acceptance: officer A requests document correction; college B sees it, replies; 
 ## Prompt 10 — Conditional EVC, committee and hearing operations
 
 ```text
-Implement reusable Stage Workspace for stage coordinators/members. Each stage instance has a prescribed type (Scrutiny, EVC, SHC, SAC, other), required composition, due/visit/hearing dates, participants, conflict-of-interest flags, evidence, report and authorized outcome. Use APH routing configuration for when a stage occurs; DO NOT place SAC appeal in every normal application and do not treat EVC as a fixed permanent regional team.
+Implement reusable Stage Workspace for EVC coordinators/members. Each stage instance has a prescribed type (Scrutiny, EVC, SHC, SAC, other), required composition, due/visit/hearing dates, participants, conflict-of-interest flags, evidence, report and authorized outcome. Use APH routing configuration for when a stage occurs; DO NOT place SAC appeal in every normal application and do not treat EVC as a fixed permanent regional team.
 
 EVC module: identify requirement from rule, eligible expert directory, conflict/availability check, appointment/constitution workflow subject to authorized procedure, suggest visit slot, approval, send notice, track visit evidence, report submission and findings. Human experts perform physical inspection and sign the report.
 
 Committee module: create cases/agenda, share authorized evidence, record individual/member observations, track quorum/requirements when configured, consolidate report, submit recommendation or follow-up, and route for proper authority decision. Hearing module: manage invited institutional attendees, available slots, notices, rescheduling and history. All mock until official rules/permissions are validated.
 
-Acceptance: a routed application shows in stage coordinator queue, member is assigned, submits findings, coordinator records outcome, next stage receives the case; branch-skipped stages are not shown as completed.
+Acceptance: a routed application shows in EVC coordinator queue, member is assigned, submits findings, coordinator records outcome, next stage receives the case; branch-skipped stages are not shown as completed.
 ```
 
 ## Prompt 11 — National verification as a linked issue, not automatic application transfer
